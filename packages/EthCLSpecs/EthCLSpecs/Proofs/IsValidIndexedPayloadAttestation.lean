@@ -3,7 +3,7 @@ import EthCLSpecs.Gloas.Operations
 /-!
 # `EthCLSpecs.Proofs.IsValidIndexedPayloadAttestation`: a two-layer characterization
 
-A backend-generic soundness characterization of
+An exact backend-generic characterization of
 `EthCLSpecs.Gloas.isValidIndexedPayloadAttestation` (`Gloas/Operations.lean:389-400`),
 in two layers.
 
@@ -14,13 +14,17 @@ check, are stated exactly as the implementation's own literal booleans, so this 
 needs nothing beyond core `Bool` / `Nat` boolean-algebra rewrites: it is a case split over
 the same three conditions the function itself branches on.
 
-`adjacentNondecreasing_iff` and `allIndicesInRange_iff` (Layer 2's bridge lemmas) turn
-those two literal `Array.all` gates into named per-index propositions, using only core
-`Array` lemmas (`Array.all_eq_true`, `Array.size_range`, `Array.getElem_range`,
+`indexedPayloadAttestation_adjacentNondecreasing_iff` and
+`indexedPayloadAttestation_indicesInRange_iff` (Layer 2's bridge lemmas, named with
+this file's declaration as an explicit prefix since each is a narrow, single-use
+translation step rather than a general-purpose `Array` fact) turn those two literal
+`Array.all` gates into named per-index propositions, using only core `Array` lemmas
+(`Array.all_eq_true`, `Array.size_range`, `Array.getElem_range`,
 `Array.getElem?_eq_getElem`, `Option.getD_some`, `decide_eq_true_eq`), no mathlib.
-`adjacentNondecreasing_iff` states only what the implementation checks: an adjacent,
-non-strict order between consecutive elements. It does not claim uniqueness, full
-`List.Pairwise` sortedness, or anything about `Array.qsort`.
+`indexedPayloadAttestation_adjacentNondecreasing_iff` states only what the
+implementation checks: an adjacent, non-strict order between consecutive elements. It
+does not claim uniqueness, full `List.Pairwise` sortedness, or anything about
+`Array.qsort`.
 
 `isValidIndexedPayloadAttestation_eq_true_iff` (Layer 2's public theorem) composes
 Layer 1 with the two bridge lemmas into the semantic characterization: non-empty,
@@ -56,9 +60,10 @@ open EthCLSpecs.Gloas
 /-- The exact, backend-generic characterization of `isValidIndexedPayloadAttestation`:
 a direct unfold of its `if` / `||` / `!` control flow into a conjunction, one conjunct
 per gate. The two `Array.all`-based gates (adjacent-pair sortedness, in-range) are
-stated exactly as the implementation's own literal booleans; see `adjacentNondecreasing_iff`
-/ `allIndicesInRange_iff` and `isValidIndexedPayloadAttestation_eq_true_iff` below for the
-bridged, indexed form. -/
+stated exactly as the implementation's own literal booleans; see
+`indexedPayloadAttestation_adjacentNondecreasing_iff` /
+`indexedPayloadAttestation_indicesInRange_iff` and
+`isValidIndexedPayloadAttestation_eq_true_iff` below for the bridged, indexed form. -/
 theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag] [CryptoBackend]
     (state : State) (a : IndexedPayloadAttestation) :
     isValidIndexedPayloadAttestation state a = true ↔
@@ -99,7 +104,7 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
 an indexed inequality between consecutive elements. States exactly what the
 implementation checks, an adjacent, non-strict order, no more: not uniqueness, not full
 `List.Pairwise` sortedness, not `Array.qsort` correctness. -/
-theorem adjacentNondecreasing_iff (idx : Array ValidatorIndex) :
+theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array ValidatorIndex) :
     (Array.range (idx.size - 1)).all
         (fun i => idx[i]?.getD default ≤ idx[i + 1]?.getD default) = true ↔
       ∀ i (h : i + 1 < idx.size), idx[i]'(by omega) ≤ idx[i + 1]'h := by
@@ -124,14 +129,16 @@ theorem adjacentNondecreasing_iff (idx : Array ValidatorIndex) :
 (`Array.all` over the raw elements) into a per-index bound. A direct application of
 `Array.all_eq_true`, no `Array.range` plumbing needed since the check is already
 elementwise. -/
-theorem allIndicesInRange_iff [Preset] [HasherTag] (state : State) (idx : Array ValidatorIndex) :
+theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
+    (state : State) (idx : Array ValidatorIndex) :
     idx.all (fun i => i.toNat < (sszGet state validators).size) = true ↔
       ∀ i (h : i < idx.size), (idx[i]'h).toNat < (sszGet state validators).size := by
   simp only [Array.all_eq_true, decide_eq_true_eq]
 
 /-- The public semantic characterization of `isValidIndexedPayloadAttestation`: non-empty,
-adjacent-non-decreasing (in the literal, non-strict sense `adjacentNondecreasing_iff`
-states, not full sortedness or uniqueness), every index within the validator registry,
+adjacent-non-decreasing (in the literal, non-strict sense
+`indexedPayloadAttestation_adjacentNondecreasing_iff` states, not full sortedness or
+uniqueness), every index within the validator registry,
 and the configured `[CryptoBackend]` returning `true` on the exact pubkey array, signing
 root, `DOMAIN_PTC_ATTESTER` domain, and slot-derived epoch the implementation computes.
 The fourth conjunct names a backend call; it is not a cryptographic soundness claim, and
@@ -149,6 +156,7 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff [Preset] [HasherTag] [Crypt
           (getDomain state domainPtcAttester (computeEpochAtSlot a.data.slot)))
         a.signature = true := by
   rw [isValidIndexedPayloadAttestation_eq_true_iff_checks]
-  simp only [adjacentNondecreasing_iff, allIndicesInRange_iff]
+  simp only [indexedPayloadAttestation_adjacentNondecreasing_iff,
+    indexedPayloadAttestation_indicesInRange_iff]
 
 end EthCLSpecs.Proofs

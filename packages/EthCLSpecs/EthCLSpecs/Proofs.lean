@@ -38,7 +38,8 @@ Re-exports:
   characterization of `isValidIndexedPayloadAttestation`
   (`isValidIndexedPayloadAttestation_eq_true_iff_checks`, the literal form;
   `isValidIndexedPayloadAttestation_eq_true_iff`, the semantic form bridged
-  via `adjacentNondecreasing_iff` and `allIndicesInRange_iff`).
+  via `indexedPayloadAttestation_adjacentNondecreasing_iff` and
+  `indexedPayloadAttestation_indicesInRange_iff`).
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
