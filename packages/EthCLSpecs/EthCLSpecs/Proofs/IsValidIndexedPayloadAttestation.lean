@@ -7,49 +7,27 @@ An exact backend-generic characterization of
 `EthCLSpecs.Gloas.isValidIndexedPayloadAttestation` (`Gloas/Operations.lean:389-400`),
 in two layers.
 
-`isValidIndexedPayloadAttestation_eq_true_iff_checks` (Layer 1) unfolds the function's
-`if` / `||` / `!` control flow into a plain conjunction, one conjunct per gate. The two
-`Array.all`-based gates, the adjacent-pair non-strict sortedness check and the in-range
-check, are stated exactly as the implementation's own literal booleans, so this direction
-needs nothing beyond core `Bool` / `Nat` boolean-algebra rewrites: it is a case split over
-the same three conditions the function itself branches on.
+`isValidIndexedPayloadAttestation_eq_true_iff_checks` (Layer 1) restates the function's
+`if` / `||` / `!` control flow as a plain conjunction, one conjunct per gate, with the
+two `Array.all`-based gates (adjacent-pair sortedness, in-range) left exactly as the
+implementation's own literal booleans.
 
-`indexedPayloadAttestation_adjacentNondecreasing_iff` and
-`indexedPayloadAttestation_indicesInRange_iff` (Layer 2's bridge lemmas, named with
-this file's declaration as an explicit prefix since each is a narrow, single-use
-translation step rather than a general-purpose `Array` fact) turn those two literal
-`Array.all` gates into named per-index propositions, using only core `Array` lemmas
-(`Array.all_eq_true`, `Array.size_range`, `Array.getElem_range`,
-`Array.getElem?_eq_getElem`, `Option.getD_some`, `decide_eq_true_eq`), no mathlib.
-`indexedPayloadAttestation_adjacentNondecreasing_iff` states only what the
-implementation checks: an adjacent, non-strict order between consecutive elements. It
-does not claim uniqueness, full `List.Pairwise` sortedness, or anything about
-`Array.qsort`.
-
-`isValidIndexedPayloadAttestation_eq_true_iff` (Layer 2's public theorem) composes
-Layer 1 with the two bridge lemmas into the semantic characterization: non-empty,
-adjacent-non-decreasing, every index in range, and the configured `[CryptoBackend]`
-returning `true` on the exact pubkey array / signing root / domain / epoch the
-implementation computes. The fourth conjunct is a backend call, not a cryptographic
-soundness claim; no `symbolic` / `verifyOff` specialization is drawn from it here.
-
-`getDomain`, `computeEpochAtSlot`, and `Const.domainPtcAttester` above are all the
-Gloas-local names as `isValidIndexedPayloadAttestation` itself resolves them:
-`Gloas.EpochProcessing`'s `inherit getDomain` and `inherit computeEpochAtSlot` each
-shadow the `Fulu` original inside the `Gloas` namespace with a re-elaborated,
-Gloas-scoped copy, so this file opens and uses those copies directly rather than the
-`Fulu` originals. No Fulu/Gloas equivalence theorem for either is needed or claimed.
+`isValidIndexedPayloadAttestation_eq_true_iff` (Layer 2) bridges those two literal
+gates into named per-index propositions and restates the characterization
+semantically: non-empty, adjacent-non-decreasing, every index in range, and the
+configured `[CryptoBackend]` returning `true` on the exact pubkey array, signing root,
+domain, and epoch the implementation computes. The sortedness conjunct is deliberately
+adjacent and non-strict, not a uniqueness, full `List.Pairwise`, or `Array.qsort`
+claim; the signature conjunct names a backend call, not a cryptographic soundness
+claim. No mathlib.
 -/
 
 set_option autoImplicit false
 
 namespace EthCLSpecs.Proofs
 
--- `sszGet` is `scoped syntax`, not a plain declaration (`open (sszGet)` fails
--- to parse it), so `EthCLLib.Spec` stays a full `open`; the `HasherTag` /
--- `CryptoBackend` / `blsFastAggregateVerify` / `computeSigningRoot` names it
--- also brings in are the only other `EthCLLib.Spec` names this file uses.
-open EthCLLib.Spec
+open EthCLLib.Spec (CryptoBackend HasherTag blsFastAggregateVerify computeSigningRoot)
+open scoped EthCLLib.Spec
 open EthCLSpecs.Fulu (Preset ValidatorIndex)
 open EthCLSpecs.Fulu.Const (domainPtcAttester)
 open EthCLSpecs.Gloas
