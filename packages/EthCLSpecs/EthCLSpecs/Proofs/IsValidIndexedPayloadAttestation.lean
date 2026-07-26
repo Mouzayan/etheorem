@@ -53,11 +53,7 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
   unfold isValidIndexedPayloadAttestation
   dsimp only
   rcases Bool.eq_false_or_eq_true (a.attestingIndices.toArray.size == 0) with hempty | hempty
-  · simp_all only [beq_iff_eq, Array.size_eq_zero_iff, List.size_toArray, List.length_nil, BEq.rfl,
-      Nat.zero_le, Nat.sub_eq_zero_of_le, Nat.not_lt_zero, not_false_eq_true, getElem?_neg,
-      Option.getD_none, Std.le_refl, decide_true, Array.size_range, Bool.true_or, ↓reduceIte,
-      Bool.false_eq_true, ne_eq, not_true_eq_false, List.all_toArray', List.all_nil,
-      List.map_toArray, List.map_nil, true_and, false_and]
+  · simp_all
   · rcases Bool.eq_false_or_eq_true
       ((Array.range (a.attestingIndices.toArray.size - 1)).all
         (fun i => a.attestingIndices.toArray[i]?.getD default
@@ -66,21 +62,13 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
     · rcases Bool.eq_false_or_eq_true
         (a.attestingIndices.toArray.all (fun i => i.toNat < (sszGet state validators).size))
         with hbounds | hbounds
-      · simp_all only [beq_eq_false_iff_ne, ne_eq, Array.size_eq_zero_iff, Array.size_range,
-          Array.all_eq_true, decide_eq_true_eq, Bool.not_true, Bool.or_false, beq_iff_eq,
-          ↓reduceIte, Bool.not_eq_eq_eq_not, Array.all_eq_false, decide_true, not_true_eq_false,
-          exists_false, not_false_eq_true, implies_true, true_and]
-      · simp_all only [beq_eq_false_iff_ne, ne_eq, Array.size_eq_zero_iff, Array.size_range,
-          Array.all_eq_false, decide_eq_true_eq, Nat.not_lt, Bool.not_true, Bool.or_false,
-          beq_iff_eq, ↓reduceIte, Bool.not_eq_eq_eq_not, Bool.false_eq_true, not_false_eq_true,
-          Array.all_eq_true, true_and, false_iff, not_and, Bool.not_eq_true]
+      · simp_all
+      · simp_all
         intro hall
-        obtain ⟨i, hi, hge⟩ := hbounds
-        have hlt := hall i hi
+        obtain ⟨i, hi, houtofrange⟩ := hbounds
+        have hinrange := hall i hi
         omega
-    · simp_all only [beq_eq_false_iff_ne, ne_eq, Array.size_eq_zero_iff, Array.size_range,
-        Bool.not_false, Bool.or_true, ↓reduceIte, Bool.false_eq_true, not_false_eq_true,
-        Array.all_eq_true, decide_eq_true_eq, false_and, and_false]
+    · simp_all
 
 /-! ## Layer 2: core-only bridge lemmas, then the public semantic theorem -/
 
@@ -120,7 +108,7 @@ theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
 `isValidIndexedPayloadAttestation`: the indices are non-empty, adjacent
 nondecreasing, and within the validator registry, and the configured
 `[CryptoBackend]` returns `true` for the exact aggregate-verification call.
-This does not assert uniqueness, full `List.Pairwise` sortedness, qsort
+This does not assert uniqueness, full `List.Pairwise` sortedness, `Array.qsort`
 correctness, or cryptographic soundness of the backend. -/
 theorem isValidIndexedPayloadAttestation_eq_true_iff [Preset] [HasherTag] [CryptoBackend]
     (state : State) (a : IndexedPayloadAttestation) :
