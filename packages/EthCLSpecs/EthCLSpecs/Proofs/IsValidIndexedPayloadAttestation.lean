@@ -29,11 +29,12 @@ returning `true` on the exact pubkey array / signing root / domain / epoch the
 implementation computes. The fourth conjunct is a backend call, not a cryptographic
 soundness claim; no `symbolic` / `verifyOff` specialization is drawn from it here.
 
-Both `getDomain` and `Const.domainPtcAttester` above are the Gloas-local names as
-`isValidIndexedPayloadAttestation` itself resolves them: `Gloas.EpochProcessing`'s
-`inherit getDomain` shadows `Fulu.getDomain` inside the `Gloas` namespace with a
-Gloas-typed copy (`Gloas.State → …`), so this file opens and uses that copy directly.
-No Fulu/Gloas `getDomain` equivalence theorem is needed or claimed.
+`getDomain`, `computeEpochAtSlot`, and `Const.domainPtcAttester` above are all the
+Gloas-local names as `isValidIndexedPayloadAttestation` itself resolves them:
+`Gloas.EpochProcessing`'s `inherit getDomain` and `inherit computeEpochAtSlot` each
+shadow the `Fulu` original inside the `Gloas` namespace with a re-elaborated,
+Gloas-scoped copy, so this file opens and uses those copies directly rather than the
+`Fulu` originals. No Fulu/Gloas equivalence theorem for either is needed or claimed.
 -/
 
 set_option autoImplicit false
@@ -45,9 +46,10 @@ namespace EthCLSpecs.Proofs
 -- `CryptoBackend` / `blsFastAggregateVerify` / `computeSigningRoot` names it
 -- also brings in are the only other `EthCLLib.Spec` names this file uses.
 open EthCLLib.Spec
-open EthCLSpecs.Fulu (Preset ValidatorIndex computeEpochAtSlot)
+open EthCLSpecs.Fulu (Preset ValidatorIndex)
 open EthCLSpecs.Fulu.Const (domainPtcAttester)
-open EthCLSpecs.Gloas (State IndexedPayloadAttestation isValidIndexedPayloadAttestation getDomain)
+open EthCLSpecs.Gloas
+  (State IndexedPayloadAttestation isValidIndexedPayloadAttestation getDomain computeEpochAtSlot)
 
 /-! ## Layer 1: the literal characterization -/
 
@@ -82,7 +84,7 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
     · rcases Bool.eq_false_or_eq_true
         (a.attestingIndices.toArray.all (fun i => i.toNat < (sszGet state validators).size))
         with h3 | h3
-      · simp_all [EthCLSpecs.Gloas.computeEpochAtSlot, EthCLSpecs.Fulu.computeEpochAtSlot]
+      · simp_all
       · simp_all
         intro hforall
         obtain ⟨i, hi, hge⟩ := h3
