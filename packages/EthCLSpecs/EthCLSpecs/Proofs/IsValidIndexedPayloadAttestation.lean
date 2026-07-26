@@ -14,12 +14,12 @@ implementation's own literal booleans.
 
 `isValidIndexedPayloadAttestation_eq_true_iff` (Layer 2) bridges those two literal
 gates into named per-index propositions and restates the characterization
-semantically: non-empty, adjacent-non-decreasing, every index in range, and the
+semantically: non-empty, adjacent nondecreasing, every index in range, and the
 configured `[CryptoBackend]` returning `true` on the exact pubkey array, signing root,
 domain, and epoch the implementation computes. The sortedness conjunct is deliberately
-adjacent and non-strict, not a uniqueness, full `List.Pairwise`, or `Array.qsort`
-claim; the signature conjunct names a backend call, not a cryptographic soundness
-claim. No mathlib.
+adjacent and non-strict. It does not assert uniqueness, full `List.Pairwise` sortedness,
+or `Array.qsort` correctness. The signature conjunct names a backend call, not a
+cryptographic soundness claim. No mathlib.
 -/
 
 set_option autoImplicit false
@@ -116,14 +116,12 @@ theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
       ∀ i (h : i < idx.size), (idx[i]'h).toNat < (sszGet state validators).size := by
   simp only [Array.all_eq_true, decide_eq_true_eq]
 
-/-- The public semantic characterization of `isValidIndexedPayloadAttestation`: non-empty,
-adjacent-non-decreasing (in the literal, non-strict sense
-`indexedPayloadAttestation_adjacentNondecreasing_iff` states, not full sortedness or
-uniqueness), every index within the validator registry,
-and the configured `[CryptoBackend]` returning `true` on the exact pubkey array, signing
-root, `DOMAIN_PTC_ATTESTER` domain, and slot-derived epoch the implementation computes.
-The fourth conjunct names a backend call; it is not a cryptographic soundness claim, and
-no `symbolic` / `verifyOff` specialization is drawn here. -/
+/-- The public semantic characterization of
+`isValidIndexedPayloadAttestation`: the indices are non-empty, adjacent
+nondecreasing, and within the validator registry, and the configured
+`[CryptoBackend]` returns `true` for the exact aggregate-verification call.
+This does not assert uniqueness, full `List.Pairwise` sortedness, qsort
+correctness, or cryptographic soundness of the backend. -/
 theorem isValidIndexedPayloadAttestation_eq_true_iff [Preset] [HasherTag] [CryptoBackend]
     (state : State) (a : IndexedPayloadAttestation) :
     isValidIndexedPayloadAttestation state a = true ↔
