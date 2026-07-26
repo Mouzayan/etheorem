@@ -709,6 +709,13 @@ separation.
   placeholder and the remainder computed via `computePtcFromFulu`), plus a
   `default` corollary for the first region.
 
+- **`Proofs/IsValidIndexedPayloadAttestation.lean`** gives an exact,
+  backend-generic characterization of `isValidIndexedPayloadAttestation`:
+  the indices are non-empty, adjacent-nondecreasing (duplicates permitted),
+  and in range, and the configured `[CryptoBackend]` returns `true` for the
+  exact aggregate-verification call. It includes literal and indexed semantic
+  forms, with no mathlib.
+
 - **`Proofs/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
   field moves. On top of it sit unchanged-or-advances characterizations for the

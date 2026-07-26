@@ -35,13 +35,8 @@ open EthCLSpecs.Gloas
 
 /-! ## Layer 1: the literal characterization -/
 
-/-- The exact, backend-generic characterization of `isValidIndexedPayloadAttestation`:
-a direct unfold of its `if` / `||` / `!` control flow into a conjunction, one conjunct
-per gate. The two `Array.all`-based gates (adjacent-pair sortedness, in-range) are
-stated exactly as the implementation's own literal booleans; see
-`indexedPayloadAttestation_adjacentNondecreasing_iff` /
-`indexedPayloadAttestation_indicesInRange_iff` and
-`isValidIndexedPayloadAttestation_eq_true_iff` below for the bridged, indexed form. -/
+/-- Exact backend-generic characterization using the function's literal
+`Array.all` validation gates. -/
 theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag] [CryptoBackend]
     (state : State) (a : IndexedPayloadAttestation) :
     isValidIndexedPayloadAttestation state a = true ↔
@@ -79,9 +74,7 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
 
 /-- Bridges the adjacent-pair, non-strict sortedness check
 `isValidIndexedPayloadAttestation` performs (`Array.range` + `all` + `Option.getD`) into
-an indexed inequality between consecutive elements. States exactly what the
-implementation checks, an adjacent, non-strict order, no more: not uniqueness, not full
-`List.Pairwise` sortedness, not `Array.qsort` correctness. -/
+an indexed inequality between consecutive elements. -/
 theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array ValidatorIndex) :
     (Array.range (idx.size - 1)).all
         (fun i => idx[i]?.getD default ≤ idx[i + 1]?.getD default) = true ↔
@@ -104,9 +97,7 @@ theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array Validat
     exact h i (by omega)
 
 /-- Bridges the in-range check `isValidIndexedPayloadAttestation` performs
-(`Array.all` over the raw elements) into a per-index bound. A direct application of
-`Array.all_eq_true`, no `Array.range` plumbing needed since the check is already
-elementwise. -/
+(`Array.all` over the raw elements) into a per-index bound. -/
 theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
     (state : State) (idx : Array ValidatorIndex) :
     idx.all (fun i => i.toNat < (sszGet state validators).size) = true ↔

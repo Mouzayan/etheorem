@@ -61,7 +61,7 @@ Functions with a specific invariant, precondition bundle, or side-effect guarant
 | `processPtcWindow`                 | `Gloas/EpochProcessing.lean:267-277` | Each newly populated `ptcWindow` entry equals `computePtc` evaluated for its corresponding slot                                    |
 | `applyDepositForBuilder`           | `Gloas/Operations.lean:120-128`      | A deposit with an invalid signature is neither applied to a builder's balance nor requeued                                         |
 | `processBuilderDepositRequest`     | `Gloas/Operations.lean:174-190`      | A new builder is onboarded only when its deposit signature is valid                                                                |
-| `isValidIndexedPayloadAttestation` | `Gloas/Operations.lean:389-400`      | Returns true only when the attesting indices are non-empty, sorted, within the validator set, and the aggregate signature verifies |
+| `isValidIndexedPayloadAttestation` | `Gloas/Operations.lean:389-400`      | **In review**, see `EthCLSpecs/Proofs/IsValidIndexedPayloadAttestation.lean`. Returns true exactly when the attesting indices are non-empty, adjacent-nondecreasing (duplicates permitted), all within the validator registry, and the configured `[CryptoBackend]` accepts the exact aggregate-verification call |
 | `processExecutionPayloadBid`       | `Gloas/Operations.lean:451-484`      | The self-build and builder-bid paths it chooses between are mutually exclusive and jointly exhaustive                              |
 | `applyParentExecutionPayload`      | `Gloas/Operations.lean:489-513`      | Exactly one of settle-current, settle-previous, or evict fires, so a payment is never settled twice                                |
 
