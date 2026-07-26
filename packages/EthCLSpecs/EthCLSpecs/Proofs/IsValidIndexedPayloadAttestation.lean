@@ -9,7 +9,7 @@ in two layers.
 
 `isValidIndexedPayloadAttestation_eq_true_iff_checks` (Layer 1) restates the function's
 `if` / `||` / `!` control flow as a plain conjunction, one conjunct per gate, with the
-two `Array.all`-based gates (adjacent-pair sortedness, in-range) left exactly as the
+two `Array.all`-based gates (adjacent nondecreasing check, in-range) left exactly as the
 implementation's own literal booleans.
 
 `isValidIndexedPayloadAttestation_eq_true_iff` (Layer 2) bridges those two literal
@@ -52,27 +52,39 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
         a.signature = true := by
   unfold isValidIndexedPayloadAttestation
   dsimp only
-  rcases Bool.eq_false_or_eq_true (a.attestingIndices.toArray.size == 0) with h1 | h1
-  · simp_all
+  rcases Bool.eq_false_or_eq_true (a.attestingIndices.toArray.size == 0) with hempty | hempty
+  · simp_all only [beq_iff_eq, Array.size_eq_zero_iff, List.size_toArray, List.length_nil, BEq.rfl,
+      Nat.zero_le, Nat.sub_eq_zero_of_le, Nat.not_lt_zero, not_false_eq_true, getElem?_neg,
+      Option.getD_none, Std.le_refl, decide_true, Array.size_range, Bool.true_or, ↓reduceIte,
+      Bool.false_eq_true, ne_eq, not_true_eq_false, List.all_toArray', List.all_nil,
+      List.map_toArray, List.map_nil, true_and, false_and]
   · rcases Bool.eq_false_or_eq_true
       ((Array.range (a.attestingIndices.toArray.size - 1)).all
         (fun i => a.attestingIndices.toArray[i]?.getD default
           ≤ a.attestingIndices.toArray[i + 1]?.getD default))
-      with h2 | h2
+      with hsorted | hsorted
     · rcases Bool.eq_false_or_eq_true
         (a.attestingIndices.toArray.all (fun i => i.toNat < (sszGet state validators).size))
-        with h3 | h3
-      · simp_all
-      · simp_all
-        intro hforall
-        obtain ⟨i, hi, hge⟩ := h3
-        have := hforall i hi
+        with hbounds | hbounds
+      · simp_all only [beq_eq_false_iff_ne, ne_eq, Array.size_eq_zero_iff, Array.size_range,
+          Array.all_eq_true, decide_eq_true_eq, Bool.not_true, Bool.or_false, beq_iff_eq,
+          ↓reduceIte, Bool.not_eq_eq_eq_not, Array.all_eq_false, decide_true, not_true_eq_false,
+          exists_false, not_false_eq_true, implies_true, true_and]
+      · simp_all only [beq_eq_false_iff_ne, ne_eq, Array.size_eq_zero_iff, Array.size_range,
+          Array.all_eq_false, decide_eq_true_eq, Nat.not_lt, Bool.not_true, Bool.or_false,
+          beq_iff_eq, ↓reduceIte, Bool.not_eq_eq_eq_not, Bool.false_eq_true, not_false_eq_true,
+          Array.all_eq_true, true_and, false_iff, not_and, Bool.not_eq_true]
+        intro hall
+        obtain ⟨i, hi, hge⟩ := hbounds
+        have hlt := hall i hi
         omega
-    · simp_all
+    · simp_all only [beq_eq_false_iff_ne, ne_eq, Array.size_eq_zero_iff, Array.size_range,
+        Bool.not_false, Bool.or_true, ↓reduceIte, Bool.false_eq_true, not_false_eq_true,
+        Array.all_eq_true, decide_eq_true_eq, false_and, and_false]
 
 /-! ## Layer 2: core-only bridge lemmas, then the public semantic theorem -/
 
-/-- Bridges the adjacent-pair, non-strict sortedness check
+/-- Bridges the adjacent nondecreasing check
 `isValidIndexedPayloadAttestation` performs (`Array.range` + `all` + `Option.getD`) into
 an indexed inequality between consecutive elements. -/
 theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array ValidatorIndex) :
