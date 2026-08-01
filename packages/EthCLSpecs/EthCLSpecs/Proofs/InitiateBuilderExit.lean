@@ -1,5 +1,4 @@
 import EthCLSpecs.Gloas.Operations
-import EthCLSpecs.Fulu.RegistryUpdates
 
 /-!
 # `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s exact effect
