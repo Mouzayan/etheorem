@@ -25,7 +25,7 @@ Re-exports:
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
 * `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s exact
-  in-range / out-of-range `sszGet`-observable effect
+  in-range / out-of-range effect on the builders registry through `sszGet`
   (`initiateBuilderExit_run_inRange`, `initiateBuilderExit_run_outOfRange`),
   the conditional `UInt64` no-wrap bound on the withdrawability-delay sum
   (`epoch_add_minBuilderWithdrawabilityDelay_no_wrap`), and the function-level
