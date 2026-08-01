@@ -1,6 +1,7 @@
 import EthCLSpecs.Proofs.BuilderIndex
 import EthCLSpecs.Proofs.GetPtc
 import EthCLSpecs.Proofs.InitializePtcWindow
+import EthCLSpecs.Proofs.InitiateBuilderExit
 
 /-!
 # `EthCLSpecs.Proofs`: consensus-spec theorems (index)
@@ -23,4 +24,10 @@ Re-exports:
   (`getPtcElseOffset_lt_same_slot`).
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
+* `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s exact
+  in-range / out-of-range `sszGet`-observable effect
+  (`initiateBuilderExit_run_inRange`, `initiateBuilderExit_run_outOfRange`),
+  the conditional `UInt64` no-wrap bound on the withdrawability-delay sum
+  (`epoch_add_minBuilderWithdrawabilityDelay_no_wrap`), and the function-level
+  in-range corollary (`initiateBuilderExit_run_inRange_no_wrap`).
 -/
