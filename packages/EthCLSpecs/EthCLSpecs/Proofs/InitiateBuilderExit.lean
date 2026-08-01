@@ -1,7 +1,7 @@
 import EthCLSpecs.Gloas.Operations
 
 /-!
-# `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s exact effect
+# `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s exact effect on the builder registry
 
 `EthCLSpecs.Gloas.initiateBuilderExit` (`Gloas/Operations.lean`) is the EIP-8282
 builder-exit mutator, called only from `processBuilderExitRequest`:
@@ -14,8 +14,8 @@ forkdef initiateBuilderExit (builderIndex : BuilderIndex) : StateTransition Unit
       { b with withdrawableEpoch := epoch + Const.minBuilderWithdrawabilityDelay }
 ```
 
-It writes exactly one field of exactly one builder, through the infallible `[i]!` index:
-`withdrawableEpoch := currentEpochOf(pre-state) + MIN_BUILDER_WITHDRAWABILITY_DELAY`. Unlike
+It writes `builders[builderIndex.toNat]!.withdrawableEpoch`, through the infallible `[i]!`
+index, to `currentEpochOf(pre-state) + MIN_BUILDER_WITHDRAWABILITY_DELAY`. Unlike
 its validator-side sibling `initiateValidatorExit` (`Fulu/RegistryUpdates.lean`), it carries
 no `assert` against `UInt64` overflow on that sum, so the sum silently wraps whenever it
 would exceed `2 ^ 64 - 1`; see `epoch_add_minBuilderWithdrawabilityDelay_no_wrap` below for the
@@ -29,6 +29,18 @@ configuration does not exist in the codebase yet). Postconditions are stated thr
 cached (`TreeBacked`) and uncached flavours of `State` are only *observationally* equal, not
 structurally equal, so `initiateBuilderExit_run_outOfRange` is phrased through `sszGet`, not
 through a claimed `state' = state`.
+
+The out-of-range case (`initiateBuilderExit_run_outOfRange`) is a Lean-only behavior with no
+pyspec counterpart. The pinned Gloas spec (`initiate_builder_exit`,
+`specs/gloas/beacon-chain.md`) indexes with the same `state.builders[builder_index]`
+expression, but `remerkleable`'s `List.get`/`List.set` (`remerkleable/complex.py`, pinned
+`eth-remerkleable` v0.1.31) raise `IndexError` on an out-of-range index, and the sum on the
+following line raises on `UInt64` overflow the same way (see `epoch_add_…_no_wrap` above): both
+are invalid transitions upstream, not silent no-ops. `initiateBuilderExit`'s only caller,
+`processBuilderExitRequest`, only ever calls it with `builderIndex` derived from a successful
+`findIdx?` over `state.builders` itself, so it is always in range in practice; the out-of-range
+theorem characterizes Lean's `[i]!` total-indexing behavior on an input the real caller never
+produces, not a divergence that can be triggered from a valid block.
 -/
 
 set_option autoImplicit false
@@ -97,11 +109,11 @@ Both directions unfold `initiateBuilderExit` down to `EStateM`'s bare `Result.ok
 itself reducible by `rfl`, since it pattern-matches on `state`'s cached/uncached constructor;
 `rcases state with t | t` splits on that, and both branches close by the same tactic. -/
 
-/-- **In range.** Running `initiateBuilderExit builderIndex` never rejects, and the only
-`sszGet`-observable difference between the pre- and post-state is
-`builders[builderIndex.toNat]!.withdrawableEpoch`, using `currentEpochOf` read from the
-*pre*-state (the `do`-block's `← get` runs before the write, and nothing else can have changed
-the state in between). Every other builder and the registry's `.size` are unchanged. -/
+/-- **In range.** Running `initiateBuilderExit builderIndex` never rejects, and the exact effect
+on the builder registry is: `builders[builderIndex.toNat]!.withdrawableEpoch` becomes
+`currentEpochOf` read from the *pre*-state (the `do`-block's `← get` runs before the write) plus
+`MIN_BUILDER_WITHDRAWABILITY_DELAY`, every other builder is unchanged, and the registry's
+`.size` is unchanged. This does not characterize any other top-level `BeaconState` field. -/
 theorem initiateBuilderExit_run_inRange [Preset] [HasherTag] [Config]
     (state : State) (builderIndex : BuilderIndex)
     (hidx : builderIndex.toNat < (sszGet state builders).size) :
@@ -128,7 +140,9 @@ theorem initiateBuilderExit_run_inRange [Preset] [HasherTag] [Config]
 total), and now *every* `sszGet`-observable read of `builders`, at any index, agrees between the
 pre- and post-state (`sszList_set!_eq_of_out_of_range`): the write is a genuine no-op at the
 `SSZList` level, not merely at the written index. This is deliberately **not** stated as
-`state' = state`, which is false for the cached flavour; see the module docstring. -/
+`state' = state`, which is false for the cached flavour; see the module docstring. This case has
+no pyspec counterpart (the pinned spec raises `IndexError` here instead) and is never exercised
+by the real caller `processBuilderExitRequest`; see the module docstring. -/
 theorem initiateBuilderExit_run_outOfRange [Preset] [HasherTag] [Config]
     (state : State) (builderIndex : BuilderIndex)
     (hidx : ¬ builderIndex.toNat < (sszGet state builders).size) :
