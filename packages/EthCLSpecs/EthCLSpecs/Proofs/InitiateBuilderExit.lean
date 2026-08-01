@@ -25,15 +25,10 @@ Every theorem here runs the concrete `EStateM StateTransitionError State` (`Run`
 the fork's runner (`Gloas/Interface.lean`) actually instantiates `StateTransition` to, not the
 `docs/SPECS_ARCHITECTURE.md`-aspirational pure `StateT`/`UncachedBox` pairing (that
 configuration does not exist in the codebase yet). Postconditions are stated through `sszGet`
-(the *observable* read, `.view.path`), never through raw `State` equality: `State` is
-`SSZ.Box HasherTag.H BeaconState`, closed over a *cached* (`TreeBacked`) and an *uncached*
-(`UncachedSSZ`) flavour, and the two are only *observationally* equal after an out-of-range
-`[i]!` write. `SizzLean.Cache.Update`'s `sszUpdate` unconditionally records a `PendingWrite`
-closure in the cached flavour's `pending` map even when the index is out of range (the closure
-itself checks the bound and resolves to `none`, a commit-time no-op that leaves the Merkle root
-unchanged); the `pending` map itself is a strictly new value, so the raw `Box` values differ
-even though every `sszGet` read of the two post-states agrees. `initiateBuilderExit_run_outOfRange`
-below is phrased accordingly, through `sszGet`, not through a claimed `state' = state`.
+(the *observable* read), never through raw `State` equality: for an out-of-range write, the
+cached (`TreeBacked`) and uncached flavours of `State` are only *observationally* equal, not
+structurally equal, so `initiateBuilderExit_run_outOfRange` is phrased through `sszGet`, not
+through a claimed `state' = state`.
 -/
 
 set_option autoImplicit false
@@ -44,7 +39,7 @@ open EthCLLib.Spec
 open EthCLSpecs.Fulu (Preset Config BuilderIndex Epoch)
 open EthCLSpecs.Gloas (initiateBuilderExit State currentEpochOf)
 
-/-- `initiateBuilderExit` runs at everywhere in the runner (`Gloas/Interface.lean`)
+/-- `initiateBuilderExit` runs in the concrete transition monad used by the runner (`Gloas/Interface.lean`)
 abstracted only over `[HasherTag]` (so this does not commit to `FastBox` vs `UncachedSSZ`, both
 of which `HasherTag.H`-generic code can still be instantiated against). -/
 abbrev Run [Preset] [HasherTag] [Config] :=
@@ -52,24 +47,16 @@ abbrev Run [Preset] [HasherTag] [Config] :=
 
 /-! ## `SSZList` read/write lemmas the `Box`-flavour split below reduces to
 
-None of these are specific to `Builder` or to `initiateBuilderExit`; they are the generic facts
-`sszModify`'s emitted `xs.set! i v` / `xs[j]!` pair obeys, on top of core Lean's `Array` lemmas
-for `setIfInBounds` (`Array.set!`'s definition) and the *default* `LawfulGetElem` instance that
-`Init.GetElem` derives automatically from `SizzLean.Repr`'s `GetElem (SSZList α cap) …` instance
-plus `Nat`'s decidable `<` (so `getElem!_pos` / `getElem!_neg`, stated generically for any
-`LawfulGetElem`, already apply to `SSZList` with no `SSZList`-specific instance needed). -/
+Generic facts about `sszModify`'s emitted `xs.set! i v` / `xs[j]!` pair, not specific to
+`Builder` or to `initiateBuilderExit`. -/
 
-/-- `SSZList.set!`'s size preservation, spelled through `SSZList.size` (`sszUpdate`'s own
-size-preservation proof obligation, restated as a usable rewrite rule). -/
+/-- `SSZList.set!`'s size preservation. -/
 private theorem sszList_size_set! {α : Type} {cap : Nat}
     (xs : SizzLean.Repr.SSZList α cap) (i : Nat) (v : α) :
     (xs.set! i v).size = xs.size := by
   simp [SizzLean.Repr.SSZList.size]
 
-/-- The written element reads back exactly the written value, given the write was in range.
-`getElem!_pos` first drops the `!` (an infallible read) down to a checked read at the supplied
-proof; the remaining `.val[i]'_` goal is `Array.getElem_setIfInBounds_self` under `SSZList`'s
-`Subtype` wrapper, which `simp` unwraps via `SSZList.set!`'s definition. -/
+/-- The written element reads back exactly the written value, given the write was in range. -/
 private theorem sszList_getElem!_set!_self {α : Type} [Inhabited α] {cap : Nat}
     (xs : SizzLean.Repr.SSZList α cap) (i : Nat) (v : α) (h : i < xs.size) :
     (xs.set! i v)[i]! = v := by
@@ -78,10 +65,8 @@ private theorem sszList_getElem!_set!_self {α : Type} [Inhabited α] {cap : Nat
   show (xs.set! i v).val[i]'_ = v
   simp
 
-/-- Every element other than the one written is untouched, unconditionally on whether that
-other index `j` is itself in range: in range, `Array.getElem_setIfInBounds_ne` distinguishes it
-from the write at `i`; out of range, both sides are `getElem!_neg`'s `default` (same `.size` on
-both sides, via `sszList_size_set!`). -/
+/-- Every element other than the one written is untouched, regardless of whether that other
+index `j` is itself in range. -/
 private theorem sszList_getElem!_set!_ne {α : Type} [Inhabited α] {cap : Nat}
     (xs : SizzLean.Repr.SSZList α cap) (i j : Nat) (v : α) (hij : i ≠ j) :
     (xs.set! i v)[j]! = xs[j]! := by
@@ -95,12 +80,9 @@ private theorem sszList_getElem!_set!_ne {α : Type} [Inhabited α] {cap : Nat}
           (h := by simpa [sszList_size_set!] using hj),
         getElem!_neg (dom := fun (xs : SizzLean.Repr.SSZList α cap) i => i < xs.size) (h := hj)]
 
-/-- Out of range, `Array.set!`'s clamping (`setIfInBounds`) is a no-op on the *whole* list, not
-merely at the target index: no `[j]!` read at any `j` (in range or not) can tell the pre- and
-post-write lists apart. This is the fact `initiateBuilderExit_run_outOfRange` needs; it is
-strictly stronger than "the `.view` field is unaffected" (`SSZList` equality, not just
-per-element reads), even though the ambient `Box` itself is *not* a no-op in the cached
-flavour (see the module docstring's `pending`-map note). -/
+/-- Out of range, the write is a no-op on the *whole* list, not merely at the target index: no
+`[j]!` read at any `j` can tell the pre- and post-write lists apart. This is strictly stronger
+than "the `.view` field is unaffected", and is what `initiateBuilderExit_run_outOfRange` needs. -/
 private theorem sszList_set!_eq_of_out_of_range {α : Type} {cap : Nat}
     (xs : SizzLean.Repr.SSZList α cap) (i : Nat) (v : α) (hi : ¬ i < xs.size) :
     xs.set! i v = xs := by
@@ -111,14 +93,9 @@ private theorem sszList_set!_eq_of_out_of_range {α : Type} {cap : Nat}
 /-! ## The concrete-run theorem
 
 Both directions unfold `initiateBuilderExit` down to `EStateM`'s bare `Result.ok () state'` by
-`rfl`: `get`, `modifyState` (`= modifyThe State`), and every layer of `MonadStateOf` /
-`MonadState` between them are `@[inline]` / `abbrev` all the way to `EStateM.get` /
-`EStateM.modifyGet`, so nothing is opaque and the `do`-block reduces without any hashing or
-cache machinery running. What is *not* reducible by `rfl` is `sszGet`'s read on the resulting
-`state'`, since `SSZ.Box.view` pattern-matches on `state`'s own `.cached` / `.uncached`
-constructor: `rcases state with t | t` unsticks it, and the two branches close by the identical
-tactic (the box-level dispatch never appears in a `sszGet`-observable postcondition; only the
-Merkle-cache bookkeeping, invisible to `sszGet`, differs between them). -/
+`rfl` (nothing in the `do`-block is opaque). `sszGet`'s read on the resulting `state'` is not
+itself reducible by `rfl`, since it pattern-matches on `state`'s cached/uncached constructor;
+`rcases state with t | t` splits on that, and both branches close by the same tactic. -/
 
 /-- **In range.** Running `initiateBuilderExit builderIndex` never rejects, and the only
 `sszGet`-observable difference between the pre- and post-state is
@@ -151,12 +128,7 @@ theorem initiateBuilderExit_run_inRange [Preset] [HasherTag] [Config]
 total), and now *every* `sszGet`-observable read of `builders`, at any index, agrees between the
 pre- and post-state (`sszList_set!_eq_of_out_of_range`): the write is a genuine no-op at the
 `SSZList` level, not merely at the written index. This is deliberately **not** stated as
-`state' = state`: in the cached flavour, `sszUpdate` still records a `PendingWrite` entry keyed
-at `builderIndex`'s gindex in `TreeBacked.pending` (its bound check is deferred to commit time,
-where it resolves to `none` and touches nothing), so the raw post-state `Box` value is a
-genuinely different `pending` map, even though it is observationally, and root-wise, identical.
-Claiming raw equality here would be a false theorem for the cached flavour; see the module
-docstring. -/
+`state' = state`, which is false for the cached flavour; see the module docstring. -/
 theorem initiateBuilderExit_run_outOfRange [Preset] [HasherTag] [Config]
     (state : State) (builderIndex : BuilderIndex)
     (hidx : ¬ builderIndex.toNat < (sszGet state builders).size) :
@@ -172,10 +144,10 @@ theorem initiateBuilderExit_run_outOfRange [Preset] [HasherTag] [Config]
 /-! ## No-overflow: conditional, matching `initiateValidatorExit`'s own `assert` shape
 
 `Epoch` is `UInt64` (`Fulu/Types.lean`), so `epoch + Const.minBuilderWithdrawabilityDelay` is
-`UInt64` addition, mod `2 ^ 64`. No bound on `[Config].minBuilderWithdrawabilityDelay` or on the
-current epoch is universal (a `[Config]` instance is free to set
-`minBuilderWithdrawabilityDelay` arbitrarily, and `currentEpochOf` grows without bound over a
-chain's lifetime), so the no-wrap fact is necessarily **conditional**, exactly the shape
+`UInt64` addition, mod `2 ^ 64`. No generic invariant relates the bounded `UInt64` current epoch
+to the independently configurable withdrawal delay (a `[Config]` instance is free to set
+`minBuilderWithdrawabilityDelay` arbitrarily), so the no-wrap fact is necessarily
+**conditional**, exactly the shape
 `initiateValidatorExit`'s own `assert (exitEpoch.toNat + Const.minValidatorWithdrawabilityDelay.toNat < 2 ^ 64)`
 takes for the validator side; `initiateBuilderExit` carries no such `assert`, so the condition
 is a hypothesis a caller must otherwise establish (e.g. from a slot/epoch bound on `mainnet`),
