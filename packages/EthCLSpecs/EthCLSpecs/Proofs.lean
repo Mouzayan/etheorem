@@ -28,6 +28,9 @@ Re-exports:
   in-range / out-of-range effect on the builders registry through `sszGet`
   (`initiateBuilderExit_run_inRange`, `initiateBuilderExit_run_outOfRange`),
   the conditional `UInt64` no-wrap bound on the withdrawability-delay sum
-  (`epoch_add_minBuilderWithdrawabilityDelay_no_wrap`), and the function-level
-  in-range corollary (`initiateBuilderExit_run_inRange_no_wrap`).
+  (`epoch_add_minBuilderWithdrawabilityDelay_no_wrap`) and its function-level
+  in-range corollary (`initiateBuilderExit_run_inRange_no_wrap`), and the two
+  shipped preset/config pairs on which that bound holds unconditionally, with
+  no epoch or slot hypothesis from the caller (`initiateBuilderExit_run_inRange_no_wrap_minimal`,
+  `initiateBuilderExit_run_inRange_no_wrap_mainnet`).
 -/

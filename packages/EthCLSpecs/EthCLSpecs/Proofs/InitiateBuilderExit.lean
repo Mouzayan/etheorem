@@ -19,7 +19,10 @@ index, to `currentEpochOf(pre-state) + MIN_BUILDER_WITHDRAWABILITY_DELAY`. Unlik
 its validator-side sibling `initiateValidatorExit` (`Fulu/RegistryUpdates.lean`), it carries
 no `assert` against `UInt64` overflow on that sum, so the sum silently wraps whenever it
 would exceed `2 ^ 64 - 1`; see `epoch_add_minBuilderWithdrawabilityDelay_no_wrap` below for the
-conditional (not unconditional) bound that rules the wrap out.
+conditional (not unconditional) bound that rules the wrap out, and
+`initiateBuilderExit_run_inRange_no_wrap_minimal` /
+`initiateBuilderExit_run_inRange_no_wrap_mainnet` for the two shipped preset/config pairs on
+which that bound holds unconditionally, with no epoch or slot hypothesis from the caller.
 
 Every theorem here runs the concrete `EStateM StateTransitionError State` (`Run`), the monad
 the fork's runner (`Gloas/Interface.lean`) actually instantiates `StateTransition` to, not the
@@ -48,7 +51,7 @@ set_option autoImplicit false
 namespace EthCLSpecs.Proofs
 
 open EthCLLib.Spec
-open EthCLSpecs.Fulu (Preset Config BuilderIndex Epoch)
+open EthCLSpecs.Fulu (Preset Config BuilderIndex Epoch minimal mainnet minimalConfig mainnetConfig)
 open EthCLSpecs.Gloas (initiateBuilderExit State currentEpochOf)
 
 /-- `initiateBuilderExit` runs in the concrete transition monad used by the runner (`Gloas/Interface.lean`)
@@ -193,5 +196,78 @@ theorem initiateBuilderExit_run_inRange_no_wrap [Preset] [HasherTag] [Config]
           = (currentEpochOf state).toNat + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat := by
   obtain ⟨state', hrun, hview, -, -⟩ := initiateBuilderExit_run_inRange state builderIndex hidx
   exact ⟨state', hrun, by rw [hview]; exact epoch_add_minBuilderWithdrawabilityDelay_no_wrap hbound⟩
+
+/-! ## Shipped preset/config pairs: unconditional
+
+`initiateBuilderExit_run_inRange_no_wrap`'s `hbound` premise is conditional because a `[Config]`
+instance is free, in general, to pick `minBuilderWithdrawabilityDelay` large enough to make
+`currentEpochOf state + minBuilderWithdrawabilityDelay` overflow `2 ^ 64`. The two pairs the
+repository actually ships (`minimal`/`minimalConfig`, `Fulu/Constants.lean`; and
+`mainnet`/`mainnetConfig`, same file) don't: `slotsPerEpoch` bounds `currentEpochOf state` well
+below `2 ^ 64` for *any* `state.slot : UInt64`, so the sum with the concrete
+`minBuilderWithdrawabilityDelay` (`2` on minimal, `8192` on mainnet) can never reach `2 ^ 64`.
+Each corollary below discharges `hbound` from that arithmetic fact alone, no epoch or slot
+hypothesis from the caller, and reuses `initiateBuilderExit_run_inRange_no_wrap` rather than
+re-deriving the state transition.
+
+Both theorems fix `[Preset]`/`[Config]` to the shipped pair with `letI` in the statement itself
+(the repository's own idiom for a concrete-instance theorem, `IMPLEMENTATION_NOTES.md`'s
+"`letI`, not `(CryptoBackend := …)`" convention); `letI`'s term elaborator sets `zeta := true`,
+so the printed and `#check`ed type carries no residual `let`, `∀ [HasherTag] (state : State) …`,
+identical in shape to the generic theorem's own signature. Inside the proof, the call to
+`initiateBuilderExit_run_inRange_no_wrap` supplies `Preset`/`Config` positionally (`@f minimal _
+minimalConfig …`) rather than through a fresh tactic-level `letI`: a tactic-level `letI` does
+solve the instance-search obligation, but the local instance it introduces is opaque to
+`simp`/`omega` (its value is not zeta-delta-reducible in that position), which left
+`Config.minBuilderWithdrawabilityDelay` stuck as an unreduced projection. Supplying the two
+instances directly as terms keeps them transparent for the arithmetic that follows. -/
+
+/-- **Minimal preset/config (`minimal`, `minimalConfig`), unconditional.** `slotsPerEpoch = 8`,
+`minBuilderWithdrawabilityDelay = 2`: `currentEpochOf state ≤ (2 ^ 64 - 1) / 8`, so the sum with
+`2` is nowhere near `2 ^ 64`, for every `state`. -/
+theorem initiateBuilderExit_run_inRange_no_wrap_minimal [HasherTag] :
+    letI : Preset := minimal
+    letI : Config := minimalConfig
+    ∀ (state : State) (builderIndex : BuilderIndex),
+      builderIndex.toNat < (sszGet state builders).size →
+      ∃ state' : State,
+        (initiateBuilderExit (StateTransition := Run) builderIndex).run state = .ok () state'
+        ∧ (sszGet state' builders[builderIndex.toNat]!).withdrawableEpoch.toNat
+            = (currentEpochOf state).toNat + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat := by
+  letI : Preset := minimal
+  letI : Config := minimalConfig
+  intro state builderIndex hidx
+  refine @initiateBuilderExit_run_inRange_no_wrap minimal _ minimalConfig state builderIndex hidx ?_
+  have hslot := UInt64.toNat_lt (sszGet state slot)
+  have hspe : (@Preset.slotsPerEpoch minimal : Nat) = 8 := rfl
+  have hdelay : (@Config.minBuilderWithdrawabilityDelay minimalConfig).toNat = 2 := rfl
+  simp only [currentEpochOf, EthCLSpecs.Gloas.computeEpochAtSlot,
+    EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay, EthCLSpecs.Fulu.Const.slotsPerEpoch,
+    UInt64.toNat_div, UInt64.toNat_ofNat', hspe, hdelay, Nat.reducePow, Nat.reduceMod]
+  omega
+
+/-- **Mainnet preset/config (`mainnet`, `mainnetConfig`), unconditional.** `slotsPerEpoch = 32`,
+`minBuilderWithdrawabilityDelay = 8192`: `currentEpochOf state ≤ (2 ^ 64 - 1) / 32`, so the sum
+with `8192` is nowhere near `2 ^ 64`, for every `state`. -/
+theorem initiateBuilderExit_run_inRange_no_wrap_mainnet [HasherTag] :
+    letI : Preset := mainnet
+    letI : Config := mainnetConfig
+    ∀ (state : State) (builderIndex : BuilderIndex),
+      builderIndex.toNat < (sszGet state builders).size →
+      ∃ state' : State,
+        (initiateBuilderExit (StateTransition := Run) builderIndex).run state = .ok () state'
+        ∧ (sszGet state' builders[builderIndex.toNat]!).withdrawableEpoch.toNat
+            = (currentEpochOf state).toNat + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat := by
+  letI : Preset := mainnet
+  letI : Config := mainnetConfig
+  intro state builderIndex hidx
+  refine @initiateBuilderExit_run_inRange_no_wrap mainnet _ mainnetConfig state builderIndex hidx ?_
+  have hslot := UInt64.toNat_lt (sszGet state slot)
+  have hspe : (@Preset.slotsPerEpoch mainnet : Nat) = 32 := rfl
+  have hdelay : (@Config.minBuilderWithdrawabilityDelay mainnetConfig).toNat = 8192 := rfl
+  simp only [currentEpochOf, EthCLSpecs.Gloas.computeEpochAtSlot,
+    EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay, EthCLSpecs.Fulu.Const.slotsPerEpoch,
+    UInt64.toNat_div, UInt64.toNat_ofNat', hspe, hdelay, Nat.reducePow, Nat.reduceMod]
+  omega
 
 end EthCLSpecs.Proofs
