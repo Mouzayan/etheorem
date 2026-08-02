@@ -632,4 +632,14 @@ separation.
   placeholder and the remainder computed via `computePtcFromFulu`), plus a
   `default` corollary for the first region.
 
+- **`Proofs/InitiateBuilderExit.lean`** proves `initiateBuilderExit`'s exact in-range and
+  out-of-range effect on the builder registry through `sszGet`
+  (`initiateBuilderExit_run_inRange`, `initiateBuilderExit_run_outOfRange`), a conditional
+  `UInt64` no-wrap bound on the withdrawability-delay sum
+  (`epoch_add_minBuilderWithdrawabilityDelay_no_wrap`) with its function-level in-range
+  corollary (`initiateBuilderExit_run_inRange_no_wrap`), and two corollaries discharging that
+  bound unconditionally for the minimal and mainnet preset/config pairs, with no epoch or
+  slot hypothesis from the caller (`initiateBuilderExit_run_inRange_no_wrap_minimal`,
+  `initiateBuilderExit_run_inRange_no_wrap_mainnet`).
+
 - **`CONSENSUS_PROOF_CANDIDATES.md`** tracks candidate consensus proof targets.
