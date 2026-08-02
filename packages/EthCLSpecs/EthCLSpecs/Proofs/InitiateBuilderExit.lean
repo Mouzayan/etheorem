@@ -23,8 +23,8 @@ conditional (not unconditional) bound that rules the wrap out, and
 `initiateBuilderExit_run_inRange_no_wrap_mainnet` for the two shipped preset/config pairs on
 which that bound holds unconditionally, with no epoch or slot hypothesis from the caller.
 
-The run theorems use the concrete `EStateM StateTransitionError State` (`Run`) instantiated by
-the Gloas runner (`Gloas/Interface.lean`). Postconditions are stated through `sszGet`
+The run theorems use the concrete `EStateM StateTransitionError State` (`InitiateBuilderExitRun`)
+instantiated by the Gloas runner (`Gloas/Interface.lean`). Postconditions are stated through `sszGet`
 (the *observable* read), never through raw `State` equality: for an out-of-range write, the
 cached (`TreeBacked`) and uncached flavours of `State` are only *observationally* equal, not
 structurally equal, so `initiateBuilderExit_run_outOfRange` is phrased through `sszGet`, not
@@ -32,10 +32,9 @@ through a claimed `state' = state`.
 
 The out-of-range case (`initiateBuilderExit_run_outOfRange`) is a Lean-only behavior with no
 PySpec counterpart: the pinned Gloas spec indexes the same way, but the Python runtime rejects
-both an out-of-range index and a `UInt64` overflow (see
-`epoch_add_minBuilderWithdrawabilityDelay_no_wrap` above) as invalid transitions rather than
-silently no-op-ing. The sole current caller derives the index from a successful `findIdx?`, so
-its calls are expected to be in range. This caller-level fact is not proved in this file.
+both an out-of-range index and a `UInt64` overflow as invalid transitions rather than silently
+doing nothing. The sole current caller derives the index from a successful `findIdx?`, so its
+calls are expected to be in range. This caller-level fact is not proved in this file.
 -/
 
 set_option autoImplicit false
@@ -50,8 +49,8 @@ open SizzLean.Repr
 open SizzLean.Cache
 
 /-- The concrete transition monad used by the Gloas runner (`Gloas/Interface.lean`). -/
-abbrev Run [Preset] [HasherTag] [Config] :=
-  EStateM StateTransitionError (State)
+abbrev InitiateBuilderExitRun [Preset] [HasherTag] [Config] :=
+  EStateM StateTransitionError State
 
 /-! ## `SSZList` read/write lemmas the `Box`-flavour split below reduces to
 
@@ -114,7 +113,7 @@ theorem initiateBuilderExit_run_inRange [Preset] [HasherTag] [Config] :
     ∀ (state : State) (builderIndex : BuilderIndex),
       builderIndex.toNat < (sszGet state builders).size →
       ∃ state' : State,
-        (initiateBuilderExit (StateTransition := Run) builderIndex).run state = .ok () state'
+        (initiateBuilderExit (StateTransition := InitiateBuilderExitRun) builderIndex).run state = .ok () state'
         ∧ sszGet state' builders[builderIndex.toNat]!
             = { sszGet state builders[builderIndex.toNat]! with
                 withdrawableEpoch :=
@@ -139,14 +138,14 @@ theorem initiateBuilderExit_run_inRange [Preset] [HasherTag] [Config] :
 total), and now *every* `sszGet`-observable read of `builders`, at any index, agrees between the
 pre- and post-state (`sszList_set!_eq_of_out_of_range`): the write is a genuine no-op at the
 `SSZList` level, not merely at the written index. This is deliberately **not** stated as
-`state' = state`, which is false for the cached flavour; see the module docstring. This case has
-no PySpec counterpart (the pinned spec raises `IndexError` here instead) and is never exercised
-by the real caller `processBuilderExitRequest`; see the module docstring. -/
+`state' = state`, which is false for the cached flavour; see the module docstring. This case is
+not expected to be exercised by the current caller `processBuilderExitRequest`; the caller-level
+in-range fact is not proved in this file. -/
 theorem initiateBuilderExit_run_outOfRange [Preset] [HasherTag] [Config] :
     ∀ (state : State) (builderIndex : BuilderIndex),
       ¬ builderIndex.toNat < (sszGet state builders).size →
       ∃ state' : State,
-        (initiateBuilderExit (StateTransition := Run) builderIndex).run state = .ok () state'
+        (initiateBuilderExit (StateTransition := InitiateBuilderExitRun) builderIndex).run state = .ok () state'
         ∧ (∀ j : Nat, sszGet state' builders[j]! = sszGet state builders[j]!)
         ∧ (sszGet state' builders).size = (sszGet state builders).size := by
   intro state builderIndex hidx
@@ -186,7 +185,7 @@ theorem initiateBuilderExit_run_inRange_no_wrap [Preset] [HasherTag] [Config] :
       (currentEpochOf state).toNat
           + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat < 2 ^ 64 →
       ∃ state' : State,
-        (initiateBuilderExit (StateTransition := Run) builderIndex).run state = .ok () state'
+        (initiateBuilderExit (StateTransition := InitiateBuilderExitRun) builderIndex).run state = .ok () state'
         ∧ (sszGet state' builders[builderIndex.toNat]!).withdrawableEpoch.toNat
             = (currentEpochOf state).toNat
               + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat := by
@@ -216,7 +215,7 @@ theorem initiateBuilderExit_run_inRange_no_wrap_minimal [HasherTag] :
     ∀ (state : State) (builderIndex : BuilderIndex),
       builderIndex.toNat < (sszGet state builders).size →
       ∃ state' : State,
-        (initiateBuilderExit (StateTransition := Run) builderIndex).run state = .ok () state'
+        (initiateBuilderExit (StateTransition := InitiateBuilderExitRun) builderIndex).run state = .ok () state'
         ∧ (sszGet state' builders[builderIndex.toNat]!).withdrawableEpoch.toNat
             = (currentEpochOf state).toNat + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat := by
   letI : Preset := minimal
@@ -240,7 +239,7 @@ theorem initiateBuilderExit_run_inRange_no_wrap_mainnet [HasherTag] :
     ∀ (state : State) (builderIndex : BuilderIndex),
       builderIndex.toNat < (sszGet state builders).size →
       ∃ state' : State,
-        (initiateBuilderExit (StateTransition := Run) builderIndex).run state = .ok () state'
+        (initiateBuilderExit (StateTransition := InitiateBuilderExitRun) builderIndex).run state = .ok () state'
         ∧ (sszGet state' builders[builderIndex.toNat]!).withdrawableEpoch.toNat
             = (currentEpochOf state).toNat + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat := by
   letI : Preset := mainnet
