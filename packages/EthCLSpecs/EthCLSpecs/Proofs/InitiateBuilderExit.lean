@@ -46,7 +46,8 @@ set_option autoImplicit false
 namespace EthCLSpecs.Proofs
 
 open EthCLLib.Spec
-open EthCLSpecs.Fulu (Preset Config BuilderIndex Epoch minimal mainnet minimalConfig mainnetConfig)
+open EthCLSpecs.Fulu (Preset Config BuilderIndex Epoch)
+open EthCLSpecs.Fulu (minimal mainnet minimalConfig mainnetConfig)
 open EthCLSpecs.Gloas (initiateBuilderExit State currentEpochOf)
 
 /-- The concrete transition monad used by the Gloas runner (`Gloas/Interface.lean`). -/
@@ -193,9 +194,9 @@ theorem initiateBuilderExit_run_inRange_no_wrap [Preset] [HasherTag] [Config]
 instance is free, in general, to pick `minBuilderWithdrawabilityDelay` large enough to make
 `currentEpochOf state + minBuilderWithdrawabilityDelay` overflow `2 ^ 64`. The two pairs the
 repository actually ships (the minimal and mainnet preset/config pairs used by the shipped
-Gloas interfaces) don't: `slotsPerEpoch` bounds `currentEpochOf state` well
-below `2 ^ 64` for *any* `state.slot : UInt64`, so the sum with the concrete
-`minBuilderWithdrawabilityDelay` (`2` on minimal, `8192` on mainnet) can never reach `2 ^ 64`.
+Gloas interfaces) don't: `slotsPerEpoch` bounds `currentEpochOf state` well below `2 ^ 64` for
+*any* `state.slot : UInt64`, so the sum with the concrete `minBuilderWithdrawabilityDelay` (`2`
+on minimal, `8192` on mainnet) can never reach `2 ^ 64`.
 Each corollary below discharges `hbound` from that arithmetic fact alone, no epoch or slot
 hypothesis from the caller, and reuses `initiateBuilderExit_run_inRange_no_wrap` rather than
 re-deriving the state transition. -/
@@ -215,6 +216,10 @@ theorem initiateBuilderExit_run_inRange_no_wrap_minimal [HasherTag] :
   letI : Preset := minimal
   letI : Config := minimalConfig
   intro state builderIndex hidx
+  -- `@f minimal _ minimalConfig …`, not a bare `f …`: a tactic-level `letI` would also solve
+  -- the instance-search obligation here, but the local instance it introduces is opaque to
+  -- `simp`/`omega`, leaving `Config.minBuilderWithdrawabilityDelay` stuck as an unreduced
+  -- projection. Supplying `minimal`/`minimalConfig` as terms keeps them transparent below.
   refine @initiateBuilderExit_run_inRange_no_wrap minimal _ minimalConfig state builderIndex hidx ?_
   have hslot := UInt64.toNat_lt (sszGet state slot)
   have hspe : (@Preset.slotsPerEpoch minimal : Nat) = 8 := rfl
