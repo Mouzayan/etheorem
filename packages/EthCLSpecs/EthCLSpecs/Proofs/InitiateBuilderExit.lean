@@ -15,8 +15,7 @@ forkdef initiateBuilderExit (builderIndex : BuilderIndex) : StateTransition Unit
 ```
 
 It writes `builders[builderIndex.toNat]!.withdrawableEpoch`, through the infallible `[i]!`
-index, to `currentEpochOf(pre-state) + MIN_BUILDER_WITHDRAWABILITY_DELAY`. Unlike
-its validator-side sibling `initiateValidatorExit` (`Fulu/RegistryUpdates.lean`), it carries
+index, to `currentEpochOf(pre-state) + MIN_BUILDER_WITHDRAWABILITY_DELAY`. It carries
 no `assert` against `UInt64` overflow on that sum, so the sum silently wraps whenever it
 would exceed `2 ^ 64 - 1`; see `epoch_add_minBuilderWithdrawabilityDelay_no_wrap` below for the
 conditional (not unconditional) bound that rules the wrap out, and
@@ -24,10 +23,8 @@ conditional (not unconditional) bound that rules the wrap out, and
 `initiateBuilderExit_run_inRange_no_wrap_mainnet` for the two shipped preset/config pairs on
 which that bound holds unconditionally, with no epoch or slot hypothesis from the caller.
 
-Every theorem here runs the concrete `EStateM StateTransitionError State` (`Run`), the monad
-the fork's runner (`Gloas/Interface.lean`) actually instantiates `StateTransition` to, not the
-`docs/SPECS_ARCHITECTURE.md`-aspirational pure `StateT`/`UncachedBox` pairing (that
-configuration does not exist in the codebase yet). Postconditions are stated through `sszGet`
+The run theorems use the concrete `EStateM StateTransitionError State` (`Run`) instantiated by
+the Gloas runner (`Gloas/Interface.lean`). Postconditions are stated through `sszGet`
 (the *observable* read), never through raw `State` equality: for an out-of-range write, the
 cached (`TreeBacked`) and uncached flavours of `State` are only *observationally* equal, not
 structurally equal, so `initiateBuilderExit_run_outOfRange` is phrased through `sszGet`, not
@@ -39,11 +36,9 @@ pyspec counterpart. The pinned Gloas spec (`initiate_builder_exit`,
 expression, but `remerkleable`'s `List.get`/`List.set` (`remerkleable/complex.py`, pinned
 `eth-remerkleable` v0.1.31) raise `IndexError` on an out-of-range index, and the sum on the
 following line raises on `UInt64` overflow the same way (see `epoch_add_…_no_wrap` above): both
-are invalid transitions upstream, not silent no-ops. `initiateBuilderExit`'s only caller,
-`processBuilderExitRequest`, only ever calls it with `builderIndex` derived from a successful
-`findIdx?` over `state.builders` itself, so it is always in range in practice; the out-of-range
-theorem characterizes Lean's `[i]!` total-indexing behavior on an input the real caller never
-produces, not a divergence that can be triggered from a valid block.
+are invalid transitions upstream, not silent no-ops. The sole current caller derives the index
+from a successful `findIdx?`, so its calls are expected to be in range. This caller-level fact
+is not proved in this file.
 -/
 
 set_option autoImplicit false
@@ -54,9 +49,7 @@ open EthCLLib.Spec
 open EthCLSpecs.Fulu (Preset Config BuilderIndex Epoch minimal mainnet minimalConfig mainnetConfig)
 open EthCLSpecs.Gloas (initiateBuilderExit State currentEpochOf)
 
-/-- `initiateBuilderExit` runs in the concrete transition monad used by the runner (`Gloas/Interface.lean`)
-abstracted only over `[HasherTag]` (so this does not commit to `FastBox` vs `UncachedSSZ`, both
-of which `HasherTag.H`-generic code can still be instantiated against). -/
+/-- The concrete transition monad used by the Gloas runner (`Gloas/Interface.lean`). -/
 abbrev Run [Preset] [HasherTag] [Config] :=
   EStateM StateTransitionError (State)
 
@@ -158,17 +151,14 @@ theorem initiateBuilderExit_run_outOfRange [Preset] [HasherTag] [Config]
     dsimp only [SizzLean.Cache.SSZ.Box.view, SizzLean.Cache.TreeBacked.addPendingMany] at hidx ⊢ <;>
     rw [sszList_set!_eq_of_out_of_range _ _ _ hidx]
 
-/-! ## No-overflow: conditional, matching `initiateValidatorExit`'s own `assert` shape
+/-! ## Generic conditional no-overflow
 
-`Epoch` is `UInt64` (`Fulu/Types.lean`), so `epoch + Const.minBuilderWithdrawabilityDelay` is
+`Epoch` is an alias for `UInt64`, so `epoch + Const.minBuilderWithdrawabilityDelay` is
 `UInt64` addition, mod `2 ^ 64`. No generic invariant relates the bounded `UInt64` current epoch
 to the independently configurable withdrawal delay (a `[Config]` instance is free to set
 `minBuilderWithdrawabilityDelay` arbitrarily), so the no-wrap fact is necessarily
-**conditional**, exactly the shape
-`initiateValidatorExit`'s own `assert (exitEpoch.toNat + Const.minValidatorWithdrawabilityDelay.toNat < 2 ^ 64)`
-takes for the validator side; `initiateBuilderExit` carries no such `assert`, so the condition
-is a hypothesis a caller must otherwise establish (e.g. from a slot/epoch bound on `mainnet`),
-not a run-time guard the function enforces itself. -/
+**conditional**: the condition is a hypothesis a caller must otherwise establish (e.g. from a
+slot/epoch bound on `mainnet`), not a run-time guard the function enforces itself. -/
 
 /-- Core Lean's `UInt64.toNat_add` gives `(a + b).toNat = (a.toNat + b.toNat) % 2 ^ 64`
 unconditionally; under the stated bound, `Nat.mod_eq_of_lt` drops the `%` and the `UInt64` sum's
@@ -202,25 +192,13 @@ theorem initiateBuilderExit_run_inRange_no_wrap [Preset] [HasherTag] [Config]
 `initiateBuilderExit_run_inRange_no_wrap`'s `hbound` premise is conditional because a `[Config]`
 instance is free, in general, to pick `minBuilderWithdrawabilityDelay` large enough to make
 `currentEpochOf state + minBuilderWithdrawabilityDelay` overflow `2 ^ 64`. The two pairs the
-repository actually ships (`minimal`/`minimalConfig`, `Fulu/Constants.lean`; and
-`mainnet`/`mainnetConfig`, same file) don't: `slotsPerEpoch` bounds `currentEpochOf state` well
+repository actually ships (the minimal and mainnet preset/config pairs used by the shipped
+Gloas interfaces) don't: `slotsPerEpoch` bounds `currentEpochOf state` well
 below `2 ^ 64` for *any* `state.slot : UInt64`, so the sum with the concrete
 `minBuilderWithdrawabilityDelay` (`2` on minimal, `8192` on mainnet) can never reach `2 ^ 64`.
 Each corollary below discharges `hbound` from that arithmetic fact alone, no epoch or slot
 hypothesis from the caller, and reuses `initiateBuilderExit_run_inRange_no_wrap` rather than
-re-deriving the state transition.
-
-Both theorems fix `[Preset]`/`[Config]` to the shipped pair with `letI` in the statement itself
-(the repository's own idiom for a concrete-instance theorem, `IMPLEMENTATION_NOTES.md`'s
-"`letI`, not `(CryptoBackend := …)`" convention); `letI`'s term elaborator sets `zeta := true`,
-so the printed and `#check`ed type carries no residual `let`, `∀ [HasherTag] (state : State) …`,
-identical in shape to the generic theorem's own signature. Inside the proof, the call to
-`initiateBuilderExit_run_inRange_no_wrap` supplies `Preset`/`Config` positionally (`@f minimal _
-minimalConfig …`) rather than through a fresh tactic-level `letI`: a tactic-level `letI` does
-solve the instance-search obligation, but the local instance it introduces is opaque to
-`simp`/`omega` (its value is not zeta-delta-reducible in that position), which left
-`Config.minBuilderWithdrawabilityDelay` stuck as an unreduced projection. Supplying the two
-instances directly as terms keeps them transparent for the arithmetic that follows. -/
+re-deriving the state transition. -/
 
 /-- **Minimal preset/config (`minimal`, `minimalConfig`), unconditional.** `slotsPerEpoch = 8`,
 `minBuilderWithdrawabilityDelay = 2`: `currentEpochOf state ≤ (2 ^ 64 - 1) / 8`, so the sum with
