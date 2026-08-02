@@ -31,14 +31,11 @@ structurally equal, so `initiateBuilderExit_run_outOfRange` is phrased through `
 through a claimed `state' = state`.
 
 The out-of-range case (`initiateBuilderExit_run_outOfRange`) is a Lean-only behavior with no
-pyspec counterpart. The pinned Gloas spec (`initiate_builder_exit`,
-`specs/gloas/beacon-chain.md`) indexes with the same `state.builders[builder_index]`
-expression, but `remerkleable`'s `List.get`/`List.set` (`remerkleable/complex.py`, pinned
-`eth-remerkleable` v0.1.31) raise `IndexError` on an out-of-range index, and the sum on the
-following line raises on `UInt64` overflow the same way (see `epoch_add_…_no_wrap` above): both
-are invalid transitions upstream, not silent no-ops. The sole current caller derives the index
-from a successful `findIdx?`, so its calls are expected to be in range. This caller-level fact
-is not proved in this file.
+PySpec counterpart: the pinned Gloas spec indexes the same way, but the Python runtime rejects
+both an out-of-range index and a `UInt64` overflow (see
+`epoch_add_minBuilderWithdrawabilityDelay_no_wrap` above) as invalid transitions rather than
+silently no-op-ing. The sole current caller derives the index from a successful `findIdx?`, so
+its calls are expected to be in range. This caller-level fact is not proved in this file.
 -/
 
 set_option autoImplicit false
@@ -92,8 +89,8 @@ private theorem sszList_getElem!_set!_ne {α : Type} [Inhabited α] {cap : Nat} 
         getElem!_neg (dom := fun (xs : SSZList α cap) i => i < xs.size) (h := hj)]
 
 /-- Out of range, the write is a no-op on the *whole* list, not merely at the target index: no
-`[j]!` read at any `j` can tell the pre- and post-write lists apart. This is strictly stronger
-than "the `.view` field is unaffected", and is what `initiateBuilderExit_run_outOfRange` needs. -/
+`[j]!` read at any `j` can tell the pre- and post-write lists apart, which is what
+`initiateBuilderExit_run_outOfRange` needs. -/
 private theorem sszList_set!_eq_of_out_of_range {α : Type} {cap : Nat} :
     ∀ (xs : SSZList α cap) (i : Nat) (v : α), ¬ i < xs.size → xs.set! i v = xs := by
   intro xs i v hi
@@ -143,7 +140,7 @@ total), and now *every* `sszGet`-observable read of `builders`, at any index, ag
 pre- and post-state (`sszList_set!_eq_of_out_of_range`): the write is a genuine no-op at the
 `SSZList` level, not merely at the written index. This is deliberately **not** stated as
 `state' = state`, which is false for the cached flavour; see the module docstring. This case has
-no pyspec counterpart (the pinned spec raises `IndexError` here instead) and is never exercised
+no PySpec counterpart (the pinned spec raises `IndexError` here instead) and is never exercised
 by the real caller `processBuilderExitRequest`; see the module docstring. -/
 theorem initiateBuilderExit_run_outOfRange [Preset] [HasherTag] [Config] :
     ∀ (state : State) (builderIndex : BuilderIndex),
@@ -225,10 +222,6 @@ theorem initiateBuilderExit_run_inRange_no_wrap_minimal [HasherTag] :
   letI : Preset := minimal
   letI : Config := minimalConfig
   intro state builderIndex hidx
-  -- `@f minimal _ minimalConfig …`, not a bare `f …`: a tactic-level `letI` would also solve
-  -- the instance-search obligation here, but the local instance it introduces is opaque to
-  -- `simp`/`omega`, leaving `Config.minBuilderWithdrawabilityDelay` stuck as an unreduced
-  -- projection. Supplying `minimal`/`minimalConfig` as terms keeps them transparent below.
   refine @initiateBuilderExit_run_inRange_no_wrap minimal _ minimalConfig state builderIndex hidx ?_
   have hslot := UInt64.toNat_lt (sszGet state slot)
   have hspe : (@Preset.slotsPerEpoch minimal : Nat) = 8 := rfl
