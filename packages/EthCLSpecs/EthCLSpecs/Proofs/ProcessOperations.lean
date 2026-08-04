@@ -81,8 +81,7 @@ private theorem forIn_ops_eq_processOperationsForM [Preset] [HasherTag] :
   simp only [ForM.forM, Array.forM, map_const_eq_bind_pure, run_eq_bind_pure_unit]
 
 /-- `processOperations` is the deposit assert followed by the six family folds. -/
-private theorem processOperations_eq_seq
-    [Preset] [HasherTag] [Config] [CryptoBackend] :
+private theorem processOperations_eq_seq [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody),
       processOperations (StateTransition := ProcessOperationsRun) body = (do
         assert (body.deposits.size == 0)
@@ -108,8 +107,7 @@ error is an `assert` constructor; its diagnostic string is existential and
 unpinned in the statement. Only this initial gate is claimed to preserve `pre`:
 a later handler may modify state before failing, and `EStateM` does not roll
 those changes back. -/
-theorem processOperations_nonempty_deposits_error
-    [Preset] [HasherTag] [Config] [CryptoBackend] :
+theorem processOperations_nonempty_deposits_error [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody) (pre : State),
       body.deposits.size ≠ 0 →
       ∃ descr : String,
@@ -148,23 +146,20 @@ private abbrev processOperationsLoops [Preset] [HasherTag] [Config] [CryptoBacke
   processOperationsForM body.payloadAttestations processPayloadAttestation
 
 /-- `processOperationsLoops` is the six `processOperationsForM` steps in bind form. -/
-private theorem processOperationsLoops_eq_binds
-    [Preset] [HasherTag] [Config] [CryptoBackend] :
+private theorem processOperationsLoops_eq_binds [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody),
       processOperationsLoops body =
         (processOperationsForM body.proposerSlashings processProposerSlashing >>= fun _ =>
-          processOperationsForM body.attesterSlashings processAttesterSlashing >>= fun _ =>
-            processOperationsForM body.attestations processAttestation >>= fun _ =>
-              processOperationsForM body.voluntaryExits processVoluntaryExit >>= fun _ =>
-                processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange >>=
-                  fun _ =>
-                    processOperationsForM body.payloadAttestations processPayloadAttestation) := by
+         processOperationsForM body.attesterSlashings processAttesterSlashing >>= fun _ =>
+         processOperationsForM body.attestations processAttestation >>= fun _ =>
+         processOperationsForM body.voluntaryExits processVoluntaryExit >>= fun _ =>
+         processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange >>= fun _ =>
+         processOperationsForM body.payloadAttestations processPayloadAttestation) := by
   intro body
   rfl
 
 /-- Unpack success of the six loops into the five intermediate states plus `post`. -/
-private theorem processOperationsLoops_run_ok_iff
-    [Preset] [HasherTag] [Config] [CryptoBackend] :
+private theorem processOperationsLoops_run_ok_iff [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody) (pre post : State),
       (processOperationsLoops body).run pre = .ok () post ↔
         ∃ afterproposers afterattesters afterattestations afterexits afterchanges : State,
@@ -215,8 +210,7 @@ private theorem processOperationsLoops_run_ok_iff
     exact ⟨afterchanges, h5, h6⟩
 
 /-- After a successful deposit assert, `processOperations` is the six loops. -/
-private theorem processOperations_run_eq_loops
-    [Preset] [HasherTag] [Config] [CryptoBackend] :
+private theorem processOperations_run_eq_loops [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody) (pre : State),
       (body.deposits.size == 0) = true →
       (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
@@ -230,8 +224,7 @@ private theorem processOperations_run_eq_loops
 family loops succeed sequentially, each from the preceding loop's resulting
 state. Five existential intermediate states; `post` is the supplied final state.
 Handlers are opaque. -/
-theorem processOperations_run_ok_iff
-    [Preset] [HasherTag] [Config] [CryptoBackend] :
+theorem processOperations_run_ok_iff [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody) (pre post : State),
       (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
           .ok () post ↔
