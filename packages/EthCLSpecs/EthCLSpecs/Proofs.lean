@@ -3,6 +3,7 @@ import EthCLSpecs.Proofs.BuilderPendingPayments
 import EthCLSpecs.Proofs.CanBuilderCoverBid
 import EthCLSpecs.Proofs.GetPtc
 import EthCLSpecs.Proofs.InitializePtcWindow
+import EthCLSpecs.Proofs.ProcessOperations
 import EthCLSpecs.Proofs.UpdateCheckpoints
 
 /-!
@@ -33,6 +34,10 @@ Re-exports:
   (`getPtcElseOffset_lt_same_slot`).
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
+* `EthCLSpecs.Proofs.ProcessOperations`: Gloas `processOperations`'s immediate
+  non-empty-deposit rejection (`processOperations_nonempty_deposits_error`) and
+  exact successful-run characterization across its six sequential operation-family
+  loops (`processOperations_run_ok_iff`).
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.

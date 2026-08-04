@@ -709,6 +709,16 @@ separation.
   placeholder and the remainder computed via `computePtcFromFulu`), plus a
   `default` corollary for the first region.
 
+- **`Proofs/ProcessOperations.lean`** characterizes Gloas `processOperations` over
+  the concrete `EStateM` runner: non-empty in-block deposits fail immediately as
+  `StateTransitionError.assert` with the pre-state preserved, and success is
+  equivalent to empty deposits plus the six operation-family loops succeeding
+  sequentially, each starting from the preceding loop’s resulting state
+  (`processOperationsForM` over each list). Handlers stay opaque. Only the
+  initial deposit assertion is proved to preserve the original state on failure.
+  A later handler may modify state before failing, and `EStateM` does not roll
+  those changes back.
+
 - **`Proofs/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
   field moves. On top of it sit unchanged-or-advances characterizations for the
