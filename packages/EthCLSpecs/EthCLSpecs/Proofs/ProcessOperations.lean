@@ -1,13 +1,16 @@
 import EthCLSpecs.Gloas.Transition
 
 /-!
-# `EthCLSpecs.Proofs.ProcessOperations`: deposit gate and exact success ↔
+# `EthCLSpecs.Proofs.ProcessOperations`: deposit gate and successful-run characterization
 
 Exact deposit-gate and successful-run characterization of Gloas
 `processOperations` over the concrete `EStateM` runner. One theorem rejects a
 non-empty in-block deposit list at the opening assert; the other unpacks a
 successful `.run` into empty deposits plus the six operation-family loops in
 implementation order. Handlers stay opaque.
+
+`processOperations` is the operations coordinator within `processBlock`; these
+theorems do not characterize the complete block-processing pipeline.
 
 This module characterizes the coordinator's deposit gate and sequencing. It does
 not establish complete correctness of operation processing: per-operation
