@@ -1,16 +1,19 @@
 import EthCLSpecs.Gloas.Transition
 
 /-!
-# `EthCLSpecs.Proofs.ProcessOperations`: Gloas `processOperations` characterization
+# `EthCLSpecs.Proofs.ProcessOperations`: deposit gate and exact success ↔
 
-Two theorems about Gloas `processOperations` over the concrete `EStateM` runner:
-immediate rejection on a non-empty in-block deposit list, and a success ↔ that
-unpacks the six operation-family loops in implementation order. Handlers stay
-opaque; only the coordinator's sequencing and deposit gate are characterized.
+Exact deposit-gate and successful-run characterization of Gloas
+`processOperations` over the concrete `EStateM` runner. One theorem rejects a
+non-empty in-block deposit list at the opening assert; the other unpacks a
+successful `.run` into empty deposits plus the six operation-family loops in
+implementation order. Handlers stay opaque.
 
-Only the initial deposit assertion is proved to preserve the original state on
-failure. A later handler may modify state before failing, and `EStateM` does not
-roll those changes back.
+This module characterizes the coordinator's deposit gate and sequencing. It does
+not establish complete correctness of operation processing: per-operation
+handler postconditions sit outside its scope. Only the initial deposit assertion
+is proved to preserve the original state on failure. A later handler may modify
+state before failing, and `EStateM` does not roll those changes back.
 -/
 
 set_option autoImplicit false
@@ -102,11 +105,11 @@ private theorem deposits_size_beq_zero_eq_false :
   intro α cap deposits hne
   exact beq_eq_false_iff_ne.2 hne
 
-/-- Non-empty in-block deposits fail the opening assertion immediately. The
-error is an `assert` constructor; its diagnostic string is existential and
-unpinned in the statement. Only this initial gate is claimed to preserve `pre`:
-a later handler may modify state before failing, and `EStateM` does not roll
-those changes back. -/
+/-- Deposit-gate characterization: non-empty in-block deposits fail the opening
+assertion immediately. The error is an `assert` constructor; its diagnostic
+string is existential and unpinned in the statement. Only this initial gate is
+claimed to preserve `pre`: a later handler may modify state before failing, and
+`EStateM` does not roll those changes back. -/
 theorem processOperations_nonempty_deposits_error [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody) (pre : State),
       body.deposits.size ≠ 0 →
@@ -220,10 +223,11 @@ private theorem processOperations_run_eq_loops [Preset] [HasherTag] [Config] [Cr
   simp [htrue, EStateM.run, Bind.bind, EStateM.bind, pure, EStateM.pure,
     processOperationsLoops]
 
-/-- Successful `processOperations` iff deposits are empty and the six operation
-family loops succeed sequentially, each from the preceding loop's resulting
-state. Five existential intermediate states; `post` is the supplied final state.
-Handlers are opaque. -/
+/-- Exact success ↔: `processOperations` succeeds iff deposits are empty and the
+six operation-family loops succeed sequentially, each from the preceding loop's
+resulting state. Five existential intermediate states; `post` is the supplied
+final state. Handlers stay opaque, so this is a coordinator sequencing
+characterization rather than complete correctness of operation processing. -/
 theorem processOperations_run_ok_iff [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody) (pre post : State),
       (processOperations (StateTransition := ProcessOperationsRun) body).run pre =

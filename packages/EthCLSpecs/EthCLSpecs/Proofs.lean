@@ -36,8 +36,9 @@ Re-exports:
   regions (`initializePtcWindow`).
 * `EthCLSpecs.Proofs.ProcessOperations`: Gloas `processOperations`'s immediate
   non-empty-deposit rejection (`processOperations_nonempty_deposits_error`) and
-  exact successful-run characterization across its six sequential operation-family
-  loops (`processOperations_run_ok_iff`).
+  exact successful-run characterization across six sequential operation-family
+  loops (`processOperations_run_ok_iff`); coordinator sequencing only, handlers
+  opaque.
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
