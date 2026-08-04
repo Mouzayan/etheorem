@@ -62,7 +62,8 @@ private theorem forIn_ops_eq_processOperationsForM
         handler op
         pure (ForInStep.yield PUnit.unit)) =
       processOperationsForM ops handler := by
-  change forIn ops.val PUnit.unit
+  -- `SSZList.ForIn` delegates to the underlying array.
+  show forIn ops.val PUnit.unit
       (fun op (_ : PUnit) =>
         handler op >>= fun _ => pure (ForInStep.yield PUnit.unit)) =
     ForM.forM ops.val handler
@@ -75,9 +76,6 @@ private theorem forIn_ops_eq_processOperationsForM
   rw [hbody, Array.forIn_yield_eq_foldlM
     (f := fun a (_ : PUnit) => handler a)
     (g := fun (_ : α) (_ : PUnit) (_ : PUnit) => PUnit.unit)]
-  change ops.val.foldlM
-      (fun (_ : PUnit) a => (fun _ => PUnit.unit) <$> handler a) PUnit.unit =
-    ForM.forM ops.val handler
   simp only [ForM.forM, Array.forM, map_const_eq_bind_pure, run_eq_bind_pure_unit]
 
 /-- `processOperations` is the deposit assert followed by the six family folds. -/
@@ -143,6 +141,18 @@ private abbrev processOperationsLoops [Preset] [HasherTag] [Config] [CryptoBacke
   processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange
   processOperationsForM body.payloadAttestations processPayloadAttestation
 
+/-- `processOperationsLoops` is the six `processOperationsForM` steps in bind form. -/
+private theorem processOperationsLoops_eq_binds
+    [Preset] [HasherTag] [Config] [CryptoBackend] (body : BeaconBlockBody) :
+    processOperationsLoops body =
+      (processOperationsForM body.proposerSlashings processProposerSlashing >>= fun _ =>
+        processOperationsForM body.attesterSlashings processAttesterSlashing >>= fun _ =>
+          processOperationsForM body.attestations processAttestation >>= fun _ =>
+            processOperationsForM body.voluntaryExits processVoluntaryExit >>= fun _ =>
+              processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange >>=
+                fun _ => processOperationsForM body.payloadAttestations processPayloadAttestation) :=
+  rfl
+
 /-- Unpack success of the six loops into the five intermediate states plus `post`. -/
 private theorem processOperationsLoops_run_ok_iff
     [Preset] [HasherTag] [Config] [CryptoBackend]
@@ -166,59 +176,23 @@ private theorem processOperationsLoops_run_ok_iff
         (processOperationsForM body.payloadAttestations processPayloadAttestation).run
             afterchanges =
           .ok () post := by
+  rw [processOperationsLoops_eq_binds]
   constructor
   · intro hok
-    change ((processOperationsForM body.proposerSlashings processProposerSlashing) >>= fun _ =>
-        (do
-          processOperationsForM body.attesterSlashings processAttesterSlashing
-          processOperationsForM body.attestations processAttestation
-          processOperationsForM body.voluntaryExits processVoluntaryExit
-          processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange
-          processOperationsForM body.payloadAttestations processPayloadAttestation)).run pre =
-      .ok () post at hok
     rw [run_bind_unit_ok_iff] at hok
     obtain ⟨afterproposers, h1, hrest1⟩ := hok
-    change ((processOperationsForM body.attesterSlashings processAttesterSlashing) >>= fun _ =>
-        (do
-          processOperationsForM body.attestations processAttestation
-          processOperationsForM body.voluntaryExits processVoluntaryExit
-          processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange
-          processOperationsForM body.payloadAttestations processPayloadAttestation)).run
-        afterproposers = .ok () post at hrest1
     rw [run_bind_unit_ok_iff] at hrest1
     obtain ⟨afterattesters, h2, hrest2⟩ := hrest1
-    change ((processOperationsForM body.attestations processAttestation) >>= fun _ =>
-        (do
-          processOperationsForM body.voluntaryExits processVoluntaryExit
-          processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange
-          processOperationsForM body.payloadAttestations processPayloadAttestation)).run
-        afterattesters = .ok () post at hrest2
     rw [run_bind_unit_ok_iff] at hrest2
     obtain ⟨afterattestations, h3, hrest3⟩ := hrest2
-    change ((processOperationsForM body.voluntaryExits processVoluntaryExit) >>= fun _ =>
-        (do
-          processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange
-          processOperationsForM body.payloadAttestations processPayloadAttestation)).run
-        afterattestations = .ok () post at hrest3
     rw [run_bind_unit_ok_iff] at hrest3
     obtain ⟨afterexits, h4, hrest4⟩ := hrest3
-    change ((processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange) >>=
-        fun _ => processOperationsForM body.payloadAttestations processPayloadAttestation).run
-        afterexits = .ok () post at hrest4
     rw [run_bind_unit_ok_iff] at hrest4
     obtain ⟨afterchanges, h5, h6⟩ := hrest4
     exact ⟨afterproposers, afterattesters, afterattestations, afterexits, afterchanges,
       h1, h2, h3, h4, h5, h6⟩
   · intro ⟨afterproposers, afterattesters, afterattestations, afterexits, afterchanges,
         h1, h2, h3, h4, h5, h6⟩
-    change ((processOperationsForM body.proposerSlashings processProposerSlashing) >>= fun _ =>
-        (do
-          processOperationsForM body.attesterSlashings processAttesterSlashing
-          processOperationsForM body.attestations processAttestation
-          processOperationsForM body.voluntaryExits processVoluntaryExit
-          processOperationsForM body.blsToExecutionChanges processBlsToExecutionChange
-          processOperationsForM body.payloadAttestations processPayloadAttestation)).run pre =
-      .ok () post
     rw [run_bind_unit_ok_iff]
     refine ⟨afterproposers, h1, ?_⟩
     rw [run_bind_unit_ok_iff]
@@ -230,9 +204,21 @@ private theorem processOperationsLoops_run_ok_iff
     rw [run_bind_unit_ok_iff]
     exact ⟨afterchanges, h5, h6⟩
 
+/-- After a successful deposit assert, `processOperations` is the six loops. -/
+private theorem processOperations_run_eq_loops
+    [Preset] [HasherTag] [Config] [CryptoBackend]
+    (body : BeaconBlockBody) (pre : State)
+    (htrue : (body.deposits.size == 0) = true) :
+    (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
+      (processOperationsLoops body).run pre := by
+  rw [processOperations_eq_seq]
+  simp [htrue, EStateM.run, Bind.bind, EStateM.bind, pure, EStateM.pure,
+    processOperationsLoops]
+
 /-- Successful `processOperations` iff deposits are empty and the six operation
-family loops succeed in order. Five existential intermediate states; `post` is
-the supplied final state. Handlers are opaque. -/
+family loops succeed sequentially, each from the preceding loop's resulting
+state. Five existential intermediate states; `post` is the supplied final state.
+Handlers are opaque. -/
 theorem processOperations_run_ok_iff
     [Preset] [HasherTag] [Config] [CryptoBackend]
     (body : BeaconBlockBody) (pre post : State) :
@@ -257,24 +243,22 @@ theorem processOperations_run_ok_iff
         (processOperationsForM body.payloadAttestations processPayloadAttestation).run
             afterchanges =
           .ok () post := by
-  rw [processOperations_eq_seq]
   constructor
   · intro hok
     cases hbeq : body.deposits.size == 0 with
     | false =>
+      rw [processOperations_eq_seq] at hok
       simp [hbeq, EStateM.run, Bind.bind, EStateM.bind, throw, throwThe,
         MonadExceptOf.throw, EStateM.throw, SpecReject.assert] at hok
     | true =>
       refine ⟨beq_iff_eq.mp hbeq, ?_⟩
       have hloops : (processOperationsLoops body).run pre = .ok () post := by
-        simpa [hbeq, EStateM.run, Bind.bind, EStateM.bind, pure, EStateM.pure,
-          processOperationsLoops] using hok
+        rwa [← processOperations_run_eq_loops body pre hbeq]
       exact (processOperationsLoops_run_ok_iff body pre post).mp hloops
   · intro ⟨hsize, hloops⟩
     have htrue : (body.deposits.size == 0) = true := beq_iff_eq.mpr hsize
     have hok : (processOperationsLoops body).run pre = .ok () post :=
       (processOperationsLoops_run_ok_iff body pre post).mpr hloops
-    simpa [htrue, EStateM.run, Bind.bind, EStateM.bind, pure, EStateM.pure,
-      processOperationsLoops] using hok
+    rwa [processOperations_run_eq_loops body pre htrue]
 
 end EthCLSpecs.Proofs
