@@ -15,8 +15,9 @@ theorems do not characterize the complete block-processing pipeline.
 This module characterizes the coordinator's deposit gate and sequencing. It does
 not establish complete correctness of operation processing: per-operation
 handler postconditions sit outside its scope. Only the initial deposit assertion
-is proved to preserve the original state on failure. A later handler may modify
-state before failing, and `EStateM` does not roll those changes back.
+is proved to preserve the pre-state on failure. Later handler failure states are
+not characterized here; `EStateM` retains state changes made before a failure
+rather than rolling them back.
 -/
 
 set_option autoImplicit false
