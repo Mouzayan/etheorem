@@ -5,9 +5,9 @@ import EthCLSpecs.Gloas.Transition
 
 Exact deposit-gate and successful-run characterization of Gloas
 `processOperations` over the concrete `EStateM` runner. One theorem rejects a
-non-empty in-block deposit list at the opening assert; the other unpacks a
-successful `.run` into empty deposits plus the six operation-family loops in
-implementation order. Handlers stay opaque.
+non-empty in-block deposit list at the opening assert; the other characterizes a
+successful `.run` exactly as empty deposits plus the six operation-family loops
+succeeding in implementation order with threaded states. Handlers stay opaque.
 
 `processOperations` is the operations coordinator within `processBlock`; these
 theorems do not characterize the complete block-processing pipeline.
@@ -112,8 +112,9 @@ private theorem deposits_size_beq_zero_eq_false :
 /-- Deposit-gate characterization: non-empty in-block deposits fail the opening
 assertion immediately. The error is an `assert` constructor; its diagnostic
 string is existential and unpinned in the statement. Only this initial gate is
-claimed to preserve `pre`: a later handler may modify state before failing, and
-`EStateM` does not roll those changes back. -/
+claimed to preserve `pre`. Later handler failure states are not characterized
+here; `EStateM` retains state changes made before a failure rather than rolling
+them back. -/
 theorem processOperations_nonempty_deposits_error [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody) (pre : State),
       body.deposits.size ≠ 0 →
