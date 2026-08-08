@@ -5,8 +5,9 @@ import EthCLSpecs.Gloas.ForkChoice
 
 `EthCLSpecs.Gloas.updateCheckpoints` replaces the Store's justified and finalized
 checkpoints only when the corresponding candidate has a strictly greater epoch.
-This file characterizes both branches exactly and proves that each invocation
-preserves or advances both recorded epochs.
+This file pins the whole result down as one record update, characterizes each
+checkpoint's two branches, and proves that every invocation preserves or advances
+both recorded epochs.
 
 All current updates to these fields use this function; `getForkchoiceStore` initializes
 the fields directly and is outside this claim. The separate Fulu declaration is also
@@ -27,6 +28,26 @@ namespace EthCLSpecs.Proofs.Gloas
 open EthCLSpecs.Gloas (Store updateCheckpoints Checkpoint)
 open EthCLSpecs.Fulu (Preset)
 open EthCLLib.Spec (MapKind HasherTag)
+
+/-- `updateCheckpoints` rewritten as a single record update: each checkpoint field
+takes its candidate exactly when that candidate's epoch is strictly greater, and
+every other field of the Store is carried through untouched.
+
+This is the frame condition the two branch characterizations below do not carry.
+They project one field each, so on their own they leave open whether the function
+also disturbs `time`, `equivocatingIndices`, or any of the maps. A caller
+threading a Store through a fork-choice transition needs to know it does not. -/
+theorem updateCheckpoints_eq
+    {map : MapKind} [Preset] [HasherTag] (store : Store map) (j f : Checkpoint) :
+    updateCheckpoints store j f =
+      { store with
+        justifiedCheckpoint :=
+          if j.epoch > store.justifiedCheckpoint.epoch then j else store.justifiedCheckpoint,
+        finalizedCheckpoint :=
+          if f.epoch > store.finalizedCheckpoint.epoch then f else store.finalizedCheckpoint } := by
+  by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch <;>
+    by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch <;>
+      simp [updateCheckpoints, h1, h2]
 
 /-- The resulting justified checkpoint is either unchanged because `j` is not newer,
 or exactly `j` because its epoch is strictly greater. -/
