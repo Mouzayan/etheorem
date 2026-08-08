@@ -7,12 +7,12 @@ import EthCLSpecs.Proofs.UpdateCheckpoints
 
 Mathlib-free proofs about `EthCLSpecs` declarations, colocated with the specs
 the way `SizzLean.Proofs` is colocated with `SizzLean`: same package, same
-build, closed by whichever of `bv_decide`, `decide`, `native_decide`, or plain
-case analysis the goal needs, over the spec's own types, no mathlib. A
-theorem that turns out to need mathlib moves to the standalone
-`EthCLProofs` package instead (`docs/SPECS_ARCHITECTURE.md` §11), the
-`LeanPoseidonProofs` containment pattern, so mathlib never reaches this
-library, the framework, the runner, or the conformance path.
+build. Each theorem is closed by whichever tactic its goal needs, `bv_decide`,
+`decide`, `native_decide`, or plain case analysis. Always over the spec's own
+types, never mathlib. A theorem that turns out to need mathlib moves to the standalone
+`EthCLProofs` package instead (`docs/SPECS_ARCHITECTURE.md` §11), following the
+`LeanPoseidonProofs` containment pattern. Mathlib never reaches this library,
+the framework, the runner, or the conformance path.
 
 Re-exports:
 
