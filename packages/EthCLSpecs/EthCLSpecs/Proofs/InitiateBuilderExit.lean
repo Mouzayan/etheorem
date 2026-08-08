@@ -124,17 +124,12 @@ theorem initiateBuilderExit_run_inRange [Preset] [HasherTag] [Config] :
               sszGet state' builders[j]! = sszGet state builders[j]!)
         ∧ (sszGet state' builders).size = (sszGet state builders).size := by
   intro state builderIndex hidx
-  refine ⟨_, initiateBuilderExit_run_eq state builderIndex, ?_, ?_, ?_⟩
-  · rcases state with t | t <;>
-      dsimp only [SSZ.Box.view, TreeBacked.addPendingMany] at hidx ⊢ <;>
-      exact sszList_getElem!_set!_self _ _ _ hidx
-  · intro j hj
-    rcases state with t | t <;>
-      dsimp only [SSZ.Box.view, TreeBacked.addPendingMany] at hidx ⊢ <;>
-      exact sszList_getElem!_set!_ne _ _ _ _ (Ne.symm hj)
-  · rcases state with t | t <;>
-      dsimp only [SSZ.Box.view, TreeBacked.addPendingMany] at hidx ⊢ <;>
-      exact sszList_size_set! _ _ _
+  refine ⟨_, initiateBuilderExit_run_eq state builderIndex, ?_⟩
+  rcases state with t | t <;>
+    dsimp only [SSZ.Box.view, TreeBacked.addPendingMany] at hidx ⊢ <;>
+    refine ⟨sszList_getElem!_set!_self _ _ _ hidx,
+      fun j hj => sszList_getElem!_set!_ne _ _ _ _ (Ne.symm hj),
+      sszList_size_set! _ _ _⟩
 
 /-- **Out of range.** Running `initiateBuilderExit builderIndex` still never rejects (`[i]!` is
 total), and now *every* `sszGet`-observable read of `builders`, at any index, agrees between the
