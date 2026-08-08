@@ -43,11 +43,11 @@ These are the literal `UInt64` values computed by the implementation; no
 claim is made that pending-obligation accumulation is overflow-free or that
 `builderIndex` identifies a registered builder. -/
 theorem canBuilderCoverBid_iff [Preset] [HasherTag] :
-    ∀ (state : EthCLSpecs.Gloas.State) (builderIndex : BuilderIndex) (bidAmount : Gwei),
+    ∀ (state : Gloas.State) (builderIndex : BuilderIndex) (bidAmount : Gwei),
       canBuilderCoverBid state builderIndex bidAmount = true ↔
         let builderBalance := (sszGet state builders[builderIndex.toNat]!).balance
         let minBalance :=
-          EthCLSpecs.Fulu.Const.minDepositAmountG +
+          Fulu.Const.minDepositAmountG +
           getPendingBalanceToWithdrawForBuilder state builderIndex
         minBalance ≤ builderBalance ∧ bidAmount ≤ builderBalance - minBalance := by
   intro state builderIndex bidAmount
@@ -71,11 +71,11 @@ exactly when the computed `minBalance` plus the bid fits within the builder's
 balance. The addition in this conclusion cannot wrap; `minBalance` itself
 remains the literal `UInt64` value produced by the implementation. -/
 theorem canBuilderCoverBid_iff_toNat_add_le [Preset] [HasherTag] :
-    ∀ (state : EthCLSpecs.Gloas.State) (builderIndex : BuilderIndex) (bidAmount : Gwei),
+    ∀ (state : Gloas.State) (builderIndex : BuilderIndex) (bidAmount : Gwei),
       canBuilderCoverBid state builderIndex bidAmount = true ↔
         let builderBalance := (sszGet state builders[builderIndex.toNat]!).balance
         let minBalance :=
-          EthCLSpecs.Fulu.Const.minDepositAmountG +
+          Fulu.Const.minDepositAmountG +
           getPendingBalanceToWithdrawForBuilder state builderIndex
         minBalance.toNat + bidAmount.toNat ≤ builderBalance.toNat := by
   intro state builderIndex bidAmount
