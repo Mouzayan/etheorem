@@ -21,5 +21,6 @@ Re-exports:
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
-  monotonicity, the justified/finalized epoch never decreases.
+  monotonicity, the justified/finalized epoch never decreases. Its theorems sit
+  in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
 -/
