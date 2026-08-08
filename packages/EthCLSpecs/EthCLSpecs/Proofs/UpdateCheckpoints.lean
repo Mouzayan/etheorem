@@ -33,12 +33,11 @@ theorem updateCheckpoints_justifiedCheckpoint_eq_or_advances
         store.justifiedCheckpoint.epoch < j.epoch) := by
   -- Decide both guards so `simp` can reduce the nested record updates
   -- and project the checkpoint field unaffected by the other update.
-  by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch <;>
-    by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch
-  · exact .inr ⟨by simp [updateCheckpoints, h1, h2], h1⟩
-  · exact .inr ⟨by simp [updateCheckpoints, h1, h2], h1⟩
-  · exact .inl ⟨by simp [updateCheckpoints, h1, h2], UInt64.not_lt.mp h1⟩
-  · exact .inl ⟨by simp [updateCheckpoints, h1, h2], UInt64.not_lt.mp h1⟩
+  by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch
+  · refine .inr ⟨?_, h1⟩
+    by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch <;> simp [updateCheckpoints, h1, h2]
+  · refine .inl ⟨?_, UInt64.not_lt.mp h1⟩
+    by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch <;> simp [updateCheckpoints, h1, h2]
 
 /-- The resulting finalized checkpoint is either unchanged because `f` is not newer,
 or exactly `f` because its epoch is strictly greater. -/
@@ -50,12 +49,11 @@ theorem updateCheckpoints_finalizedCheckpoint_eq_or_advances
         store.finalizedCheckpoint.epoch < f.epoch) := by
   -- Decide both guards so `simp` can reduce the nested record updates
   -- and project the checkpoint field unaffected by the other update.
-  by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch <;>
-    by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch
-  · exact .inr ⟨by simp [updateCheckpoints, h1, h2], h2⟩
-  · exact .inr ⟨by simp [updateCheckpoints, h1, h2], h2⟩
-  · exact .inl ⟨by simp [updateCheckpoints, h1, h2], UInt64.not_lt.mp h2⟩
-  · exact .inl ⟨by simp [updateCheckpoints, h1, h2], UInt64.not_lt.mp h2⟩
+  by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch
+  · refine .inr ⟨?_, h2⟩
+    by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch <;> simp [updateCheckpoints, h1, h2]
+  · refine .inl ⟨?_, UInt64.not_lt.mp h2⟩
+    by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch <;> simp [updateCheckpoints, h1, h2]
 
 /-- `updateCheckpoints` never lowers the Store's justified epoch. -/
 theorem updateCheckpoints_justifiedEpoch_le
