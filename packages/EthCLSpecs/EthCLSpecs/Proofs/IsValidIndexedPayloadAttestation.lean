@@ -79,11 +79,13 @@ private theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array
     exact h i (by omega)
 
 /-- Bridges the in-range check `isValidIndexedPayloadAttestation` performs
-(`Array.all` over the raw elements) into a per-index bound. -/
-private theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
-    (state : State) (idx : Array ValidatorIndex) :
-    idx.all (fun i => i.toNat < (sszGet state validators).size) = true ↔
-      ∀ i (h : i < idx.size), (idx[i]'h).toNat < (sszGet state validators).size := by
+(`Array.all` over the raw elements) into a per-index bound. The bound is an
+arbitrary `n`, the validator-registry size the caller instantiates it at plays no
+part in the argument. -/
+private theorem indexedPayloadAttestation_indicesInRange_iff
+    (n : Nat) (idx : Array ValidatorIndex) :
+    idx.all (fun i => i.toNat < n) = true ↔
+      ∀ i (h : i < idx.size), (idx[i]'h).toNat < n := by
   simp only [Array.all_eq_true, decide_eq_true_eq]
 
 /-- Public semantic characterization: non-empty, adjacent-nondecreasing, in-range
