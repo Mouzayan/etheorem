@@ -34,17 +34,18 @@ Functions where the theorem is a numeric bound, no overflow, no underflow, never
 exceeding a spec constant, or a termination bound, a fuel parameter large enough for a
 bounded walk to finish.
 
-| Function                         | Location                            | Rationale                                                                                                                                         |
-| -------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `computeExitEpochAndUpdateChurn` | `Gloas/EpochProcessing.lean:90-100` | The churn arithmetic this call site performs through `reserveChurn` must not underflow                                                            |
-| `reserveChurn`                   | `Fulu/RegistryUpdates.lean:69-74`   | Arithmetic never underflows                                                                                                                       |
-| `getExpectedWithdrawals`         | `Gloas/Withdrawals.lean:160-168`    | The withdrawals returned by its four phases combined never exceed `MAX_WITHDRAWALS_PER_PAYLOAD`                                                   |
-| `initiateBuilderExit`            | `Gloas/Operations.lean:90-93`       | Whether `epoch + minBuilderWithdrawabilityDelay` can overflow `UInt64` given `epoch`'s realistic range is the no-overflow bound to establish here |
-| `getPtc`                         | `Gloas/Operations.lean:368-376`     | **In review**, see `EthCLSpecs/Proofs/GetPtc.lean`. Its computed offset into `ptcWindow` stays in range under the two guarded call patterns covered here: `data.slot + 1 == state.slot` and the fork-choice replay callers' `slot == curSlot` |
-| `canBuilderCoverBid`             | `Gloas/Operations.lean:419-422`     | Primary builder-solvency predicate; the natural theorem is that accepting a bid never leaves the builder insolvent                                |
-| `applyWithdrawals`               | `Gloas/Withdrawals.lean:173-184`    | A builder-flagged withdrawal decreases the builder's balance by at most its own balance, so the balance never goes negative                       |
-| `getAncestor`                    | `Gloas/ForkChoice.lean:156-163`     | The fuel supplied to its `fuelLoop` DAG walk is sufficient for the walk to terminate before running out                                            |
-| `getHead`                        | `Gloas/ForkChoice.lean:446-465`     | The fuel `2 * blocks.length + 2` supplied to its LMD-GHOST walk is sufficient for the walk to reach a decided head before running out             |
+| Function                                | Location                            | Rationale                                                                                                                                          |
+| --------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `computeExitEpochAndUpdateChurn`        | `Gloas/EpochProcessing.lean:90-100` | The churn arithmetic this call site performs through `reserveChurn` must not underflow                                                             |
+| `reserveChurn`                          | `Fulu/RegistryUpdates.lean:69-74`   | Arithmetic never underflows                                                                                                                        |
+| `getExpectedWithdrawals`                | `Gloas/Withdrawals.lean:160-168`    | The withdrawals returned by its four phases combined never exceed `MAX_WITHDRAWALS_PER_PAYLOAD`                                                    |
+| `initiateBuilderExit`                   | `Gloas/Operations.lean:90-93`       | Whether `epoch + minBuilderWithdrawabilityDelay` can overflow `UInt64` given `epoch`'s realistic range is the no-overflow bound to establish here  |
+| `getPtc`                                | `Gloas/Operations.lean:368-376`     | **In review**, see `EthCLSpecs/Proofs/GetPtc.lean`. Its computed offset into `ptcWindow` stays in range under the two guarded call patterns covered here: `data.slot + 1 == state.slot` and the fork-choice replay callers' `slot == curSlot` |
+| `getPendingBalanceToWithdrawForBuilder` | `Gloas/Operations.lean:63-67`       | Under an explicit bound preventing overflow across both sequential `UInt64` folds, its result agrees with the unbounded `Nat` sum of the matching pending-withdrawal and pending-payment amounts |
+| `canBuilderCoverBid`                    | `Gloas/Operations.lean:419-422`     | **Proved**, see `EthCLSpecs/Proofs/CanBuilderCoverBid.lean`. Its `Bool` result is characterized exactly against the implementation's computed `minBalance`. Proving that queuing an accepted bid preserves `MIN_DEPOSIT_AMOUNT` + pending obligations ≤ builder balance is the caller-level follow-up, and needs pending-total no-overflow and ring-cell freshness hypotheses |
+| `applyWithdrawals`                      | `Gloas/Withdrawals.lean:173-184`    | A builder-flagged withdrawal decreases the builder's balance by at most its own balance, so the balance never goes negative                        |
+| `getAncestor`                           | `Gloas/ForkChoice.lean:156-163`     | The fuel supplied to its `fuelLoop` DAG walk is sufficient for the walk to terminate before running out                                            |
+| `getHead`                               | `Gloas/ForkChoice.lean:446-465`     | The fuel `2 * blocks.length + 2` supplied to its LMD-GHOST walk is sufficient for the walk to reach a decided head before running out              |
 
 ---
 
