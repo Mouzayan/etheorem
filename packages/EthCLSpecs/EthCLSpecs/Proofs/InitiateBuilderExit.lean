@@ -1,40 +1,27 @@
 import EthCLSpecs.Gloas.Operations
 
 /-!
-# `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s exact effect on the builder registry
+# `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s effect on the builder registry
 
-`EthCLSpecs.Gloas.initiateBuilderExit` (`Gloas/Operations.lean`) is the EIP-8282
-builder-exit mutator, called only from `processBuilderExitRequest`:
+The run theorems characterize the in-range builder update and the out-of-range
+builder-registry no-op.
 
-```
-forkdef initiateBuilderExit (builderIndex : BuilderIndex) : StateTransition Unit := do
-  let epoch := currentEpochOf (← get)
-  modifyState fun state =>
-    sszModify state builders[builderIndex.toNat]! as b =>
-      { b with withdrawableEpoch := epoch + Const.minBuilderWithdrawabilityDelay }
-```
+Postconditions are stated through `sszGet` (the *observable* read), never through raw `State`
+equality. For an out-of-range write, the cached (`TreeBacked`) and uncached flavours of `State`
+are only *observationally* equal, not structurally equal, so an out-of-range run cannot be
+claimed as `state' = state`.
 
-It writes `builders[builderIndex.toNat]!.withdrawableEpoch`, through the infallible `[i]!`
-index, to `currentEpochOf(pre-state) + MIN_BUILDER_WITHDRAWABILITY_DELAY`. It carries
-no `assert` against `UInt64` overflow on that sum, so the sum silently wraps whenever it
-would exceed `2 ^ 64 - 1`; see `epoch_add_minBuilderWithdrawabilityDelay_no_wrap` below for the
-conditional (not unconditional) bound that rules the wrap out, and
-`initiateBuilderExit_run_inRange_no_wrap_minimal` /
-`initiateBuilderExit_run_inRange_no_wrap_mainnet` for the two shipped preset/config pairs on
-which that bound holds unconditionally, with no epoch or slot hypothesis from the caller.
+The out-of-range case is Lean-only behavior with no PySpec counterpart. Although
+the pinned Gloas spec uses equivalent indexing syntax, the Python runtime rejects
+an out-of-range index where Lean's `[i]!` write is a no-op. Likewise, Python rejects
+an overflowing unsigned addition where Lean's `UInt64` addition wraps.
 
-The run theorems use the concrete `EStateM StateTransitionError State` (`InitiateBuilderExitRun`)
-instantiated by the Gloas runner (`Gloas/Interface.lean`). Postconditions are stated through `sszGet`
-(the *observable* read), never through raw `State` equality: for an out-of-range write, the
-cached (`TreeBacked`) and uncached flavours of `State` are only *observationally* equal, not
-structurally equal, so `initiateBuilderExit_run_outOfRange` is phrased through `sszGet`, not
-through a claimed `state' = state`.
+No-wrap for the withdrawability-delay sum is conditional for an arbitrary `[Config]`, and
+unconditional for the two shipped Gloas preset/config pairs, with no epoch or slot hypothesis
+from the caller.
 
-The out-of-range case (`initiateBuilderExit_run_outOfRange`) is a Lean-only behavior with no
-PySpec counterpart: the pinned Gloas spec indexes the same way, but the Python runtime rejects
-both an out-of-range index and a `UInt64` overflow as invalid transitions rather than silently
-doing nothing. The sole current caller derives the index from a successful `findIdx?`, so its
-calls are expected to be in range. This caller-level fact is not proved in this file.
+The sole current caller derives the index from a successful `findIdx?`, so its calls are
+expected to be in range. This caller-level fact is not proved in this file.
 -/
 
 set_option autoImplicit false
