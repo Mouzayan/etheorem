@@ -18,6 +18,19 @@ subjects of the sibling proof modules these theorem names would collide with a F
 companion. They live in `EthCLSpecs.Proofs.Gloas`, mirroring the `EthCLSpecs.Gloas`
 namespace the subject itself sits in, leaving `EthCLSpecs.Proofs.Fulu` free.
 
+## The shared proof shape
+
+Every proof here decides both of the definition's guards with `by_cases`, then lets
+`simp` reduce the resulting nested record updates. The second guard is load-bearing
+even where the statement never mentions it: the definition's outer `if` tests the
+finalized epoch of the store the *inner* `if` already produced, so `simp` cannot
+project either checkpoint field until both branches are settled. Dropping either
+`by_cases` leaves unsolved goals.
+
+`split` looks like the shorter route and is not available. `forkdef` elaborates
+the definition's `let` into `have store := ...`, which `split` refuses to see
+through ("Could not split an `if` or `match` expression in the goal").
+
 See `EthCLSpecs/docs/CONSENSUS_PROOF_CANDIDATES.md`, "Monotonicity properties".
 -/
 
@@ -61,8 +74,6 @@ theorem updateCheckpoints_justifiedCheckpoint_eq_or_advances :
         j.epoch ≤ store.justifiedCheckpoint.epoch) ∨
     ((updateCheckpoints store j f).justifiedCheckpoint = j ∧
         store.justifiedCheckpoint.epoch < j.epoch) := by
-  -- Decide both guards so `simp` can reduce the nested record updates
-  -- and project the checkpoint field unaffected by the other update.
   by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch
   · refine .inr ⟨?_, h1⟩
     by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch <;> simp [updateCheckpoints, h1, h2]
@@ -76,8 +87,6 @@ theorem updateCheckpoints_finalizedCheckpoint_eq_or_advances :
         f.epoch ≤ store.finalizedCheckpoint.epoch) ∨
     ((updateCheckpoints store j f).finalizedCheckpoint = f ∧
         store.finalizedCheckpoint.epoch < f.epoch) := by
-  -- Decide both guards so `simp` can reduce the nested record updates
-  -- and project the checkpoint field unaffected by the other update.
   by_cases h2 : f.epoch > store.finalizedCheckpoint.epoch
   · refine .inr ⟨?_, h2⟩
     by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch <;> simp [updateCheckpoints, h1, h2]
