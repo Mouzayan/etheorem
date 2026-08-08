@@ -36,7 +36,8 @@ open EthCLSpecs.Gloas (initiateBuilderExit State currentEpochOf)
 open SizzLean.Repr
 open SizzLean.Cache
 
-/-- The concrete transition monad used by the Gloas runner (`Gloas/Interface.lean`). -/
+/-- Concrete Gloas state-transition runner used by the public
+`initiateBuilderExit` run theorems below. -/
 abbrev InitiateBuilderExitRun [Preset] [HasherTag] [Config] :=
   EStateM StateTransitionError State
 
