@@ -29,6 +29,12 @@ open EthCLSpecs.Gloas (Store updateCheckpoints Checkpoint)
 open EthCLSpecs.Fulu (Preset)
 open EthCLLib.Spec (MapKind HasherTag)
 
+/-! Every theorem below is stated about one arbitrary Store and one arbitrary pair of
+candidate checkpoints, under the `[Preset]` / `[HasherTag]` the `Store` forkstruct binds.
+Lean includes each of these in a signature only when the statement mentions it, and all
+five statements mention all five. -/
+variable {map : MapKind} [Preset] [HasherTag] (store : Store map) (j f : Checkpoint)
+
 /-- `updateCheckpoints` rewritten as a single record update: each checkpoint field
 takes its candidate exactly when that candidate's epoch is strictly greater, and
 every other field of the Store is carried through untouched.
@@ -37,8 +43,7 @@ This is the frame condition the two branch characterizations below do not carry.
 They project one field each, so on their own they leave open whether the function
 also disturbs `time`, `equivocatingIndices`, or any of the maps. A caller
 threading a Store through a fork-choice transition needs to know it does not. -/
-theorem updateCheckpoints_eq
-    {map : MapKind} [Preset] [HasherTag] (store : Store map) (j f : Checkpoint) :
+theorem updateCheckpoints_eq :
     updateCheckpoints store j f =
       { store with
         justifiedCheckpoint :=
@@ -51,8 +56,7 @@ theorem updateCheckpoints_eq
 
 /-- The resulting justified checkpoint is either unchanged because `j` is not newer,
 or exactly `j` because its epoch is strictly greater. -/
-theorem updateCheckpoints_justifiedCheckpoint_eq_or_advances
-    {map : MapKind} [Preset] [HasherTag] (store : Store map) (j f : Checkpoint) :
+theorem updateCheckpoints_justifiedCheckpoint_eq_or_advances :
     ((updateCheckpoints store j f).justifiedCheckpoint = store.justifiedCheckpoint ∧
         j.epoch ≤ store.justifiedCheckpoint.epoch) ∨
     ((updateCheckpoints store j f).justifiedCheckpoint = j ∧
@@ -67,8 +71,7 @@ theorem updateCheckpoints_justifiedCheckpoint_eq_or_advances
 
 /-- The resulting finalized checkpoint is either unchanged because `f` is not newer,
 or exactly `f` because its epoch is strictly greater. -/
-theorem updateCheckpoints_finalizedCheckpoint_eq_or_advances
-    {map : MapKind} [Preset] [HasherTag] (store : Store map) (j f : Checkpoint) :
+theorem updateCheckpoints_finalizedCheckpoint_eq_or_advances :
     ((updateCheckpoints store j f).finalizedCheckpoint = store.finalizedCheckpoint ∧
         f.epoch ≤ store.finalizedCheckpoint.epoch) ∨
     ((updateCheckpoints store j f).finalizedCheckpoint = f ∧
@@ -82,16 +85,14 @@ theorem updateCheckpoints_finalizedCheckpoint_eq_or_advances
     by_cases h1 : j.epoch > store.justifiedCheckpoint.epoch <;> simp [updateCheckpoints, h1, h2]
 
 /-- `updateCheckpoints` never lowers the Store's justified epoch. -/
-theorem updateCheckpoints_justifiedEpoch_le
-    {map : MapKind} [Preset] [HasherTag] (store : Store map) (j f : Checkpoint) :
+theorem updateCheckpoints_justifiedEpoch_le :
     store.justifiedCheckpoint.epoch ≤ (updateCheckpoints store j f).justifiedCheckpoint.epoch := by
   rcases updateCheckpoints_justifiedCheckpoint_eq_or_advances store j f with ⟨h, _⟩ | ⟨h, hlt⟩
   · rw [h]; exact UInt64.le_refl _
   · rw [h]; exact UInt64.le_of_lt hlt
 
 /-- `updateCheckpoints` never lowers the Store's finalized epoch. -/
-theorem updateCheckpoints_finalizedEpoch_le
-    {map : MapKind} [Preset] [HasherTag] (store : Store map) (j f : Checkpoint) :
+theorem updateCheckpoints_finalizedEpoch_le :
     store.finalizedCheckpoint.epoch ≤ (updateCheckpoints store j f).finalizedCheckpoint.epoch := by
   rcases updateCheckpoints_finalizedCheckpoint_eq_or_advances store j f with ⟨h, _⟩ | ⟨h, hlt⟩
   · rw [h]; exact UInt64.le_refl _
