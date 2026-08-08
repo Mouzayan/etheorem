@@ -3,13 +3,14 @@ import EthCLSpecs.Gloas.Operations
 /-!
 # `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s effect on the builder registry
 
-The run theorems characterize the in-range builder update and the out-of-range
-builder-registry no-op.
+`initiateBuilderExit_run_eq` is the whole-transition equation (the run equals the
+source-level `sszModify` on `builders`). The in-range and out-of-range theorems
+project that equation onto the builder registry through `sszGet`.
 
-Postconditions are stated through `sszGet` (the *observable* read), never through raw `State`
-equality. For an out-of-range write, the cached (`TreeBacked`) and uncached flavours of `State`
-are only *observationally* equal, not structurally equal, so an out-of-range run cannot be
-claimed as `state' = state`.
+Postconditions on the registry are stated through `sszGet` (the *observable* read), never
+through raw `State` equality. For an out-of-range write, the cached (`TreeBacked`) and
+uncached flavours of `State` are only *observationally* equal, not structurally equal, so an
+out-of-range run cannot be claimed as `state' = state`.
 
 The out-of-range case is Lean-only behavior with no PySpec counterpart. Although
 the pinned Gloas spec uses equivalent indexing syntax, the Python runtime rejects
@@ -84,12 +85,26 @@ private theorem sszList_set!_eq_of_out_of_range {α : Type} {cap : Nat} :
   exact Array.setIfInBounds_eq_of_size_le
     (by simpa [SSZList.size] using Nat.le_of_not_lt hi)
 
-/-! ## The concrete-run theorem
+/-! ## The concrete-run theorems
 
-Both directions unfold `initiateBuilderExit` down to `EStateM`'s bare `Result.ok () state'` by
-`rfl` (nothing in the `do`-block is opaque). `sszGet`'s read on the resulting `state'` is not
-itself reducible by `rfl`, since it pattern-matches on `state`'s cached/uncached constructor;
-`rcases state with t | t` splits on that, and both branches close by the same tactic. -/
+`initiateBuilderExit_run_eq` is the whole-transition equation: the run equals `.ok ()` of the
+source-level `sszModify` on `builders`. The in-range and out-of-range theorems are convenient
+`sszGet` characterizations of that same result. `sszGet` on the post-state still needs the
+cached/uncached `Box` split; both branches close by the same list lemmas. -/
+
+/-- Exact whole-transition equation for `initiateBuilderExit`. The returned state
+is the original state with only `builders[builderIndex.toNat]!` updated through
+`sszModify`; every other top-level field is carried through. For an out-of-range
+index the underlying list write is a no-op, although the cached representation
+need not be structurally identical to the pre-state. -/
+theorem initiateBuilderExit_run_eq [Preset] [HasherTag] [Config] :
+    ∀ (state : State) (builderIndex : BuilderIndex),
+      (initiateBuilderExit (StateTransition := InitiateBuilderExitRun) builderIndex).run state =
+        .ok () (sszModify state builders[builderIndex.toNat]! as b =>
+          { b with withdrawableEpoch :=
+              currentEpochOf state + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay }) := by
+  intro state builderIndex
+  rfl
 
 /-- **In range.** Running `initiateBuilderExit builderIndex` never rejects, and the exact effect
 on the builder registry is: `builders[builderIndex.toNat]!.withdrawableEpoch` becomes
@@ -109,7 +124,7 @@ theorem initiateBuilderExit_run_inRange [Preset] [HasherTag] [Config] :
               sszGet state' builders[j]! = sszGet state builders[j]!)
         ∧ (sszGet state' builders).size = (sszGet state builders).size := by
   intro state builderIndex hidx
-  refine ⟨_, rfl, ?_, ?_, ?_⟩
+  refine ⟨_, initiateBuilderExit_run_eq state builderIndex, ?_, ?_, ?_⟩
   · rcases state with t | t <;>
       dsimp only [SSZ.Box.view, TreeBacked.addPendingMany] at hidx ⊢ <;>
       exact sszList_getElem!_set!_self _ _ _ hidx
@@ -136,7 +151,7 @@ theorem initiateBuilderExit_run_outOfRange [Preset] [HasherTag] [Config] :
         ∧ (∀ j : Nat, sszGet state' builders[j]! = sszGet state builders[j]!)
         ∧ (sszGet state' builders).size = (sszGet state builders).size := by
   intro state builderIndex hidx
-  refine ⟨_, rfl, fun j => ?_, ?_⟩ <;>
+  refine ⟨_, initiateBuilderExit_run_eq state builderIndex, fun j => ?_, ?_⟩ <;>
     rcases state with t | t <;>
     dsimp only [SSZ.Box.view, TreeBacked.addPendingMany] at hidx ⊢ <;>
     rw [sszList_set!_eq_of_out_of_range _ _ _ hidx]

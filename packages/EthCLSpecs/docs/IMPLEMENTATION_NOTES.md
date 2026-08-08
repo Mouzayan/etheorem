@@ -701,9 +701,11 @@ separation.
   placeholder and the remainder computed via `computePtcFromFulu`), plus a
   `default` corollary for the first region.
 
-- **`Proofs/InitiateBuilderExit.lean`** characterizes `initiateBuilderExit`'s
-  observable builder-registry effects and proves that the withdrawability-delay
-  addition does not wrap for the shipped minimal and mainnet configurations.
+- **`Proofs/InitiateBuilderExit.lean`** gives the whole-transition
+  `initiateBuilderExit_run_eq` equation, characterizes its observable
+  builder-registry effects in and out of range, and proves that the
+  withdrawability-delay addition does not wrap for the shipped minimal and
+  mainnet configurations.
 
 - **`Proofs/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store

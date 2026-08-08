@@ -31,9 +31,9 @@ Re-exports:
   (`getPtcElseOffset_lt_same_slot`).
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
-* `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s observable
-  builder-registry effects, with conditional and shipped-configuration no-wrap
-  corollaries for the written `withdrawableEpoch`.
+* `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit_run_eq` and its
+  observable builder-registry projections, with conditional and
+  shipped-configuration no-wrap corollaries for the written `withdrawableEpoch`.
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
