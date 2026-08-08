@@ -50,25 +50,7 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
         (computeSigningRoot a.data
           (getDomain state domainPtcAttester (computeEpochAtSlot a.data.slot)))
         a.signature = true := by
-  unfold isValidIndexedPayloadAttestation
-  dsimp only
-  rcases Bool.eq_false_or_eq_true (a.attestingIndices.toArray.size == 0) with hempty | hempty
-  · simp_all
-  · rcases Bool.eq_false_or_eq_true
-      ((Array.range (a.attestingIndices.toArray.size - 1)).all
-        (fun i => a.attestingIndices.toArray[i]?.getD default
-          ≤ a.attestingIndices.toArray[i + 1]?.getD default))
-      with hsorted | hsorted
-    · rcases Bool.eq_false_or_eq_true
-        (a.attestingIndices.toArray.all (fun i => i.toNat < (sszGet state validators).size))
-        with hbounds | hbounds
-      · simp_all
-      · simp_all
-        intro hall
-        obtain ⟨i, hi, houtofrange⟩ := hbounds
-        have hinrange := hall i hi
-        omega
-    · simp_all
+  simp [isValidIndexedPayloadAttestation, and_assoc]
 
 /-! ## Layer 2: core-only bridge lemmas, then the public semantic theorem -/
 
