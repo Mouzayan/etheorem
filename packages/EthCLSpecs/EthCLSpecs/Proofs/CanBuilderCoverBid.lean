@@ -1,5 +1,4 @@
 import EthCLSpecs.Gloas.Operations
-import Std.Tactic.BVDecide
 
 /-!
 # `EthCLSpecs.Proofs.CanBuilderCoverBid`: Boolean characterization
@@ -49,10 +48,10 @@ theorem canBuilderCoverBid_iff [Preset] [HasherTag] :
           getPendingBalanceToWithdrawForBuilder state builderIndex
         minBalance ≤ builderBalance ∧ bidAmount ≤ builderBalance - minBalance := by
   intro state builderIndex bidAmount
-  unfold canBuilderCoverBid
-  -- Reduce the local `let`s before splitting the function's balance guard.
-  dsimp only
-  split <;> simp_all <;> bv_decide
+  -- Both lemmas restate `UInt64`'s `<` / `≤` as `Nat` comparisons on `toNat`,
+  -- which is what lets `simp` discharge the guard's `if` and pair the surviving
+  -- branch conditions into the conjunction.
+  simp [canBuilderCoverBid, UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le]
 
 /-- Equivalent `Nat`-level characterization: `canBuilderCoverBid` accepts
 exactly when the computed `minBalance` plus the bid fits within the builder's
