@@ -163,7 +163,7 @@ slot/epoch bound on `mainnet`), not a run-time guard the function enforces itsel
 /-- Core Lean's `UInt64.toNat_add` gives `(a + b).toNat = (a.toNat + b.toNat) % 2 ^ 64`
 unconditionally; under the stated bound, `Nat.mod_eq_of_lt` drops the `%` and the `UInt64` sum's
 `.toNat` is exactly the `Nat` sum, no wraparound. -/
-theorem epoch_add_minBuilderWithdrawabilityDelay_no_wrap [Config] {epoch : Epoch} :
+private theorem epoch_add_minBuilderWithdrawabilityDelay_no_wrap [Config] {epoch : Epoch} :
     epoch.toNat + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat < 2 ^ 64 →
       (epoch + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay).toNat
         = epoch.toNat + EthCLSpecs.Fulu.Const.minBuilderWithdrawabilityDelay.toNat := by
