@@ -22,6 +22,9 @@ Two theorems:
   to that same computed `minBalance`, restated over `Nat` so the guard reads
   as a single addition-fits-in-balance fact rather than a subtraction.
 
+A private `le_sub_iff_toNat_add_le` carries the `UInt64`-to-`Nat` step the second
+theorem needs, keeping the spec-level statements free of the arithmetic detour.
+
 See `EthCLSpecs/docs/CONSENSUS_PROOF_CANDIDATES.md`, "Bounds and termination
 properties".
 -/
@@ -53,6 +56,16 @@ theorem canBuilderCoverBid_iff [Preset] [HasherTag] :
   -- branch conditions into the conjunction.
   simp [canBuilderCoverBid, UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le]
 
+/-- The arithmetic bridge behind the `Nat` restatement below: under `b ≤ a`, the
+truncating difference `a - b` bounds `c` exactly when `b + c` fits in `a` over
+`Nat`. Stated on bare `UInt64`s, so the spec-level theorem can apply it without
+respelling the balance expressions to generalize them first. -/
+private theorem le_sub_iff_toNat_add_le {a b c : UInt64} (h : b ≤ a) :
+    c ≤ a - b ↔ b.toNat + c.toNat ≤ a.toNat := by
+  rw [UInt64.le_iff_toNat_le, UInt64.toNat_sub_of_le _ _ h]
+  have := UInt64.le_iff_toNat_le.mp h
+  omega
+
 /-- Equivalent `Nat`-level characterization: `canBuilderCoverBid` accepts
 exactly when the computed `minBalance` plus the bid fits within the builder's
 balance. The addition in this conclusion cannot wrap; `minBalance` itself
@@ -68,18 +81,13 @@ theorem canBuilderCoverBid_iff_toNat_add_le [Preset] [HasherTag] :
   intro state builderIndex bidAmount
   rw [canBuilderCoverBid_iff]
   dsimp only
-  generalize (sszGet state builders[builderIndex.toNat]!).balance = builderBalance
-  generalize EthCLSpecs.Fulu.Const.minDepositAmountG +
-    getPendingBalanceToWithdrawForBuilder state builderIndex = minBalance
   constructor
   · rintro ⟨h_min, h_bid⟩
-    rw [UInt64.le_iff_toNat_le, UInt64.toNat_sub_of_le _ _ h_min] at h_bid
-    have h_min_nat := UInt64.le_iff_toNat_le.mp h_min
-    omega
+    exact (le_sub_iff_toNat_add_le h_min).mp h_bid
   · intro h
-    have h_min : minBalance ≤ builderBalance := UInt64.le_iff_toNat_le.mpr (by omega)
-    refine ⟨h_min, ?_⟩
-    rw [UInt64.le_iff_toNat_le, UInt64.toNat_sub_of_le _ _ h_min]
-    omega
+    -- `Nat.le_add_right` drops the bid to recover the `minBalance ≤ builderBalance`
+    -- half; both operands are inferred from `h`, so neither is respelled here.
+    have h_min := UInt64.le_iff_toNat_le.mpr (Nat.le_trans (Nat.le_add_right _ _) h)
+    exact ⟨h_min, (le_sub_iff_toNat_add_le h_min).mpr h⟩
 
 end EthCLSpecs.Proofs
