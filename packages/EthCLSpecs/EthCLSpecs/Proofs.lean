@@ -34,12 +34,9 @@ Re-exports:
   (`getPtcElseOffset_lt_same_slot`).
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
-* `EthCLSpecs.Proofs.IsValidIndexedPayloadAttestation`: the backend-generic
-  characterization of `isValidIndexedPayloadAttestation`
-  (`isValidIndexedPayloadAttestation_eq_true_iff_checks`, the literal form;
-  `isValidIndexedPayloadAttestation_eq_true_iff`, the semantic form bridged
-  via `indexedPayloadAttestation_adjacentNondecreasing_iff` and
-  `indexedPayloadAttestation_indicesInRange_iff`).
+* `EthCLSpecs.Proofs.IsValidIndexedPayloadAttestation`: literal and semantic
+  characterizations of `isValidIndexedPayloadAttestation`, including its adjacent
+  nondecreasing and validator-range checks.
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.

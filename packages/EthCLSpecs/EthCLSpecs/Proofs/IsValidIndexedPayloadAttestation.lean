@@ -4,22 +4,22 @@ import EthCLSpecs.Gloas.Operations
 # `EthCLSpecs.Proofs.IsValidIndexedPayloadAttestation`: a two-layer characterization
 
 An exact backend-generic characterization of
-`EthCLSpecs.Gloas.isValidIndexedPayloadAttestation` (`Gloas/Operations.lean:389-400`),
-in two layers.
+`EthCLSpecs.Gloas.isValidIndexedPayloadAttestation` (`Gloas/Operations.lean:389-400`).
 
-`isValidIndexedPayloadAttestation_eq_true_iff_checks` (Layer 1) restates the function's
-`if` / `||` / `!` control flow as a plain conjunction, one conjunct per gate, with the
-two `Array.all`-based gates (adjacent nondecreasing check, in-range) left exactly as the
-implementation's own literal booleans.
+**Layer 1** (`isValidIndexedPayloadAttestation_eq_true_iff_checks`) restates the
+function's `if` / `||` / `!` control flow as a plain conjunction, one conjunct per
+gate, with the two `Array.all`-based gates (adjacent nondecreasing check, in-range)
+left exactly as the implementation's own literal booleans.
 
-`isValidIndexedPayloadAttestation_eq_true_iff` (Layer 2) bridges those two literal
-gates into named per-index propositions and restates the characterization
-semantically: non-empty, adjacent nondecreasing, every index in range, and the
-configured `[CryptoBackend]` returning `true` on the exact pubkey array, signing root,
-domain, and epoch the implementation computes. The sortedness conjunct is deliberately
-adjacent and non-strict. It does not assert uniqueness, full `List.Pairwise` sortedness,
-or `Array.qsort` correctness. The signature conjunct names a backend call, not a
-cryptographic soundness claim. No mathlib.
+**Layer 2** (`isValidIndexedPayloadAttestation_eq_true_iff`) bridges those literal
+gates into named per-index propositions: non-empty, adjacent nondecreasing, every
+index in range, and the configured `[CryptoBackend]` returning `true` on the exact
+pubkey array, signing root, domain, and epoch the implementation computes.
+
+**Shared scope.** Sortedness is deliberately adjacent and non-strict (the PTC can
+repeat a validator). This module does not assert uniqueness, full `List.Pairwise`
+sortedness, or `Array.qsort` correctness. The signature conjunct names a backend
+call returning `true`, not a cryptographic soundness claim. No mathlib.
 -/
 
 set_option autoImplicit false
@@ -86,12 +86,9 @@ theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
       ∀ i (h : i < idx.size), (idx[i]'h).toNat < (sszGet state validators).size := by
   simp only [Array.all_eq_true, decide_eq_true_eq]
 
-/-- The public semantic characterization of
-`isValidIndexedPayloadAttestation`: the indices are non-empty, adjacent
-nondecreasing, and within the validator registry, and the configured
-`[CryptoBackend]` returns `true` for the exact aggregate-verification call.
-This does not assert uniqueness, full `List.Pairwise` sortedness, `Array.qsort`
-correctness, or cryptographic soundness of the backend. -/
+/-- Public semantic characterization: non-empty, adjacent-nondecreasing, in-range
+indices, and the configured `[CryptoBackend]` returning `true` on the
+implementation's exact aggregate-verification call. -/
 theorem isValidIndexedPayloadAttestation_eq_true_iff [Preset] [HasherTag] [CryptoBackend]
     (state : State) (a : IndexedPayloadAttestation) :
     isValidIndexedPayloadAttestation state a = true ↔
