@@ -710,8 +710,11 @@ separation.
   `default` corollary for the first region.
 
 - **`Proofs/IsValidIndexedPayloadAttestation.lean`** proves a two-layer,
-  backend-generic characterization of `isValidIndexedPayloadAttestation`
-  (literal validation gates, then an indexed semantic form). No mathlib.
+  backend-generic characterization of `isValidIndexedPayloadAttestation`. Layer 1
+  mirrors the implementation's literal validation gates, `validators[i.toNat]!`
+  included. Layer 2 restates them semantically and binds the in-range proof in an
+  `∃`, so its pubkey array reads the registry through `Array.attach` and no
+  panicking index survives into the public statement. No mathlib.
 
 - **`Proofs/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store

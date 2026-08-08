@@ -12,9 +12,22 @@ gate, with the two `Array.all`-based gates (adjacent nondecreasing check, in-ran
 left exactly as the implementation's own literal booleans.
 
 **Layer 2** (`isValidIndexedPayloadAttestation_eq_true_iff`) bridges those literal
-gates into named per-index propositions: non-empty, adjacent nondecreasing, every
-index in range, and the configured `[CryptoBackend]` returning `true` on the exact
-pubkey array, signing root, domain, and epoch the implementation computes.
+gates into named propositions: non-empty, adjacent nondecreasing, every index in
+range, and the configured `[CryptoBackend]` returning `true` on the exact pubkey
+array, signing root, domain, and epoch the implementation computes.
+
+**Why Layer 2's in-range gate binds a proof.** The implementation reads each pubkey
+with `validators[i.toNat]!`, which silently yields `default` past the end of the
+registry. Layer 2 states the in-range gate as `∃ hRange : ∀ i ∈ idx, …`, so the
+bound is in scope for the signature conjunct, whose pubkey array is then built by
+`Array.attach` with genuine in-bounds proofs. No `!` survives into the semantic
+statement, and the reading is unconditional. The `∃` is invisible in use: callers
+still build the whole right-hand side with `⟨h1, h2, h3, h4⟩` and still project the
+bound out with `.2.2.1`, since a `Prop`-valued binder is proof-irrelevant.
+
+Layer 1 keeps `validators[i.toNat]!` on purpose. Mirroring the implementation's
+literal gates is that layer's entire job, and the implementation panics-by-default
+there.
 
 **Shared scope.** Sortedness is deliberately adjacent and non-strict (the PTC can
 repeat a validator). This module does not assert uniqueness, full `List.Pairwise`
@@ -79,18 +92,35 @@ private theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array
     exact h i (by omega)
 
 /-- Bridges the in-range check `isValidIndexedPayloadAttestation` performs
-(`Array.all` over the raw elements) into a per-index bound. The bound is an
+(`Array.all` over the raw elements) into a membership-indexed bound. The bound is an
 arbitrary `n`, the validator-registry size the caller instantiates it at plays no
-part in the argument. -/
+part in the argument. Membership rather than position, because the bound's consumer
+is the pubkey map below, which reads `validators` at an element of `idx`. -/
 private theorem indexedPayloadAttestation_indicesInRange_iff
     (n : Nat) (idx : Array ValidatorIndex) :
-    idx.all (fun i => i.toNat < n) = true ↔
-      ∀ i (h : i < idx.size), (idx[i]'h).toNat < n := by
-  simp only [Array.all_eq_true, decide_eq_true_eq]
+    idx.all (fun i => i.toNat < n) = true ↔ ∀ i ∈ idx, i.toNat < n := by
+  simp only [Array.all_eq_true', decide_eq_true_eq]
+
+/-- Replaces the implementation's total `vs[i.toNat]!` reads with in-bounds
+`Array.attach` reads, given that every index of `idx` is in range. This is what
+keeps `!` out of the public statement below. Stated for an arbitrary `SSZList` and
+projection `f`, since neither the element type nor `Validator.pubkey` matters. -/
+private theorem map_getElem!_eq_attach_map {α β : Type} [Inhabited α] {cap : Nat}
+    (vs : SizzLean.Repr.SSZList α cap) (idx : Array ValidatorIndex) (f : α → β)
+    (hRange : ∀ i ∈ idx, i.toNat < vs.size) :
+    idx.map (fun i => f vs[i.toNat]!)
+      = idx.attach.map (fun i => f (vs[i.1.toNat]'(hRange i.1 i.2))) := by
+  apply Array.ext
+  · simp
+  · intro i _ _
+    simp only [Array.getElem_map, Array.getElem_attach]
+    -- `getElem!_pos` discharges the `!` once the element is known in bounds.
+    rw [getElem!_pos]
 
 /-- Public semantic characterization: non-empty, adjacent-nondecreasing, in-range
 indices, and the configured `[CryptoBackend]` returning `true` on the
-implementation's exact aggregate-verification call. -/
+implementation's exact aggregate-verification call. The in-range conjunct binds its
+proof so the pubkey array can be read in bounds; see the module docstring. -/
 theorem isValidIndexedPayloadAttestation_eq_true_iff [Preset] [HasherTag] [CryptoBackend]
     (state : State) (a : IndexedPayloadAttestation) :
     isValidIndexedPayloadAttestation state a = true ↔
@@ -98,13 +128,21 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff [Preset] [HasherTag] [Crypt
       let validators := sszGet state validators
       idx.size ≠ 0 ∧
       (∀ i (h : i + 1 < idx.size), idx[i]'(by omega) ≤ idx[i + 1]'h) ∧
-      (∀ i (h : i < idx.size), (idx[i]'h).toNat < validators.size) ∧
-      blsFastAggregateVerify (idx.map (fun i => (validators[i.toNat]!).pubkey))
-        (computeSigningRoot a.data
-          (getDomain state domainPtcAttester (computeEpochAtSlot a.data.slot)))
-        a.signature = true := by
+      ∃ hRange : ∀ i ∈ idx, i.toNat < validators.size,
+        blsFastAggregateVerify
+          (idx.attach.map (fun i => (validators[i.1.toNat]'(hRange i.1 i.2)).pubkey))
+          (computeSigningRoot a.data
+            (getDomain state domainPtcAttester (computeEpochAtSlot a.data.slot)))
+          a.signature = true := by
   rw [isValidIndexedPayloadAttestation_eq_true_iff_checks]
   simp only [indexedPayloadAttestation_adjacentNondecreasing_iff,
     indexedPayloadAttestation_indicesInRange_iff]
+  -- Only the last two conjuncts change shape; the first two pass through untouched.
+  refine and_congr_right (fun _ => and_congr_right (fun _ => ?_))
+  constructor
+  · rintro ⟨hRange, hVerify⟩
+    exact ⟨hRange, by rwa [map_getElem!_eq_attach_map _ _ _ hRange] at hVerify⟩
+  · rintro ⟨hRange, hVerify⟩
+    exact ⟨hRange, by rwa [map_getElem!_eq_attach_map _ _ _ hRange]⟩
 
 end EthCLSpecs.Proofs
