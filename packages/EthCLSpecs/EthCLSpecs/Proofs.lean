@@ -31,15 +31,9 @@ Re-exports:
   (`getPtcElseOffset_lt_same_slot`).
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
-* `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s exact
-  in-range / out-of-range effect on the builders registry through `sszGet`
-  (`initiateBuilderExit_run_inRange`, `initiateBuilderExit_run_outOfRange`),
-  the conditional `UInt64` no-wrap bound on the withdrawability-delay sum
-  (`epoch_add_minBuilderWithdrawabilityDelay_no_wrap`) and its function-level
-  in-range corollary (`initiateBuilderExit_run_inRange_no_wrap`), and the two
-  shipped preset/config pairs on which that bound holds unconditionally, with
-  no epoch or slot hypothesis from the caller (`initiateBuilderExit_run_inRange_no_wrap_minimal`,
-  `initiateBuilderExit_run_inRange_no_wrap_mainnet`).
+* `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit`'s observable
+  builder-registry effects, with conditional and shipped-configuration no-wrap
+  corollaries for the written `withdrawableEpoch`.
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
