@@ -1,23 +1,30 @@
 import EthCLSpecs.Proofs.BuilderIndex
+import EthCLSpecs.Proofs.BuilderPendingPayments
 import EthCLSpecs.Proofs.GetPtc
 import EthCLSpecs.Proofs.InitializePtcWindow
 import EthCLSpecs.Proofs.InitiateBuilderExit
+import EthCLSpecs.Proofs.UpdateCheckpoints
 
 /-!
 # `EthCLSpecs.Proofs`: consensus-spec theorems (index)
 
 Mathlib-free proofs about `EthCLSpecs` declarations, colocated with the specs
 the way `SizzLean.Proofs` is colocated with `SizzLean`: same package, same
-build, `bv_decide` / `decide` / `native_decide` over the spec's own types, no
-mathlib. A theorem that turns out to need mathlib moves to the standalone
-`EthCLProofs` package instead (`docs/SPECS_ARCHITECTURE.md` §11), the
-`LeanPoseidonProofs` containment pattern, so mathlib never reaches this
-library, the framework, the runner, or the conformance path.
+build. Each theorem is closed by whichever tactic its goal needs, `bv_decide`,
+`decide`, `native_decide`, or plain case analysis. Always over the spec's own
+types, never mathlib. A theorem that turns out to need mathlib moves to the standalone
+`EthCLProofs` package instead (`docs/SPECS_ARCHITECTURE.md` §11), following the
+`LeanPoseidonProofs` containment pattern. Mathlib never reaches this library,
+the framework, the runner, or the conformance path.
 
 Re-exports:
 
 * `EthCLSpecs.Proofs.BuilderIndex`: the builder-index flag round-trip
   (`isBuilderIndex`, `toBuilderIndex`, `convertBuilderIndexToValidatorIndex`).
+* `EthCLSpecs.Proofs.BuilderPendingPayments`: `processBuilderPendingPayments`'s
+  withdrawal-queuing and payment-window-shift postcondition
+  (`processBuilderPendingPayments_run`, plus
+  `processBuilderPendingPayments_run_of_fits`).
 * `EthCLSpecs.Proofs.GetPtc`: `getPtc`'s else-branch `ptcWindow` offset bound,
   for the `data.slot + 1 == state.slot` caller (`getPtcElseOffset`,
   `getPtcElseOffset_lt_next_slot`) and the `slot == curSlot` fork-choice replay callers
@@ -33,4 +40,7 @@ Re-exports:
   shipped preset/config pairs on which that bound holds unconditionally, with
   no epoch or slot hypothesis from the caller (`initiateBuilderExit_run_inRange_no_wrap_minimal`,
   `initiateBuilderExit_run_inRange_no_wrap_mainnet`).
+* `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
+  monotonicity, the justified/finalized epoch never decreases. Its theorems sit
+  in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
 -/

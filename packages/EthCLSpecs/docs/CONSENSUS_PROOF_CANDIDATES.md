@@ -10,6 +10,9 @@ the fork's surface area, just the functions with a clear invariant, safety prope
 Gloas introduces 62 new functions and overrides 46 inherited ones. The candidates below were identified by reading across the Gloas specification and supporting libraries, focusing on functions with clear correctness properties, safety invariants, algebraic laws, monotonicity properties, and other proof-worthy invariants. The list is not exhaustive.
 
 The sections below group candidates by the kind of theorem they naturally suggest.
+A candidate carries no marker until it is discharged, at which point its row reads
+**Proved** and names the module holding the theorems. There is no intermediate state:
+a proof in flight is tracked by its pull request, and the row flips when that merges.
 
 ---
 
@@ -21,7 +24,7 @@ under a stated precondition.
 
 | Function                              | Location                    | Rationale                                                                                                                                                                                                                                                                                  |
 | ------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `convertBuilderIndexToValidatorIndex` | `Gloas/Operations.lean:415` | **In review**, see `EthCLSpecs/Proofs/BuilderIndex.lean`. Round-trips with `toBuilderIndex` on any `bi` that does not already carry the `BUILDER_INDEX_FLAG` bit, since `toBuilderIndex` always clears that bit, the round trip holds only under that precondition, not as a free identity |
+| `convertBuilderIndexToValidatorIndex` | `Gloas/Operations.lean:415` | **Proved**, see `EthCLSpecs/Proofs/BuilderIndex.lean`. Round-trips with `toBuilderIndex` on any `bi` that does not already carry the `BUILDER_INDEX_FLAG` bit, since `toBuilderIndex` always clears that bit, the round trip holds only under that precondition, not as a free identity. |
 
 ---
 
@@ -41,7 +44,7 @@ bounded walk to finish.
 | `getPtc`                         | `Gloas/Operations.lean:368-376`     | **In review**, see `EthCLSpecs/Proofs/GetPtc.lean`. Its computed offset into `ptcWindow` stays in range under the two guarded call patterns covered here: `data.slot + 1 == state.slot` and the fork-choice replay callers' `slot == curSlot` |
 | `canBuilderCoverBid`             | `Gloas/Operations.lean:419-422`     | Primary builder-solvency predicate; the natural theorem is that accepting a bid never leaves the builder insolvent                                |
 | `applyWithdrawals`               | `Gloas/Withdrawals.lean:173-184`    | A builder-flagged withdrawal decreases the builder's balance by at most its own balance, so the balance never goes negative                       |
-| `getAncestor`                    | `Gloas/ForkChoice.lean:156-163`     | The fuel supplied to its `fuelIterate` DAG walk is sufficient for the walk to terminate before running out                                        |
+| `getAncestor`                    | `Gloas/ForkChoice.lean:156-163`     | The fuel supplied to its `fuelLoop` DAG walk is sufficient for the walk to terminate before running out                                            |
 | `getHead`                        | `Gloas/ForkChoice.lean:446-465`     | The fuel `2 * blocks.length + 2` supplied to its LMD-GHOST walk is sufficient for the walk to reach a decided head before running out             |
 
 ---
@@ -54,7 +57,7 @@ Functions with a specific invariant, precondition bundle, or side-effect guarant
 | ---------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `processProposerSlashing`          | `Gloas/Operations.lean:213-243`      | Payment-voiding must never touch another proposer's `BuilderPendingPayment`                                                        |
 | `processAttestation`               | `Gloas/Operations.lean:289-360`      | Committee-index safety together with builder-payment weight accounting                                                             |
-| `processBuilderPendingPayments`    | `Gloas/EpochProcessing.lean:229-248` | Each pending builder payment is paid out exactly once                                                                              |
+| `processBuilderPendingPayments`    | `Gloas/EpochProcessing.lean:229-248` | **In review**, see `EthCLSpecs/Proofs/BuilderPendingPayments.lean`. Under an explicit capacity hypothesis, every qualifying previous-epoch payment's withdrawal is appended to `builderPendingWithdrawals` in slot order, and the payment window shifts down by `SLOTS_PER_EPOCH`; this does not establish protocol-wide exactly-once settlement |
 | `processPtcWindow`                 | `Gloas/EpochProcessing.lean:267-277` | Each newly populated `ptcWindow` entry equals `computePtc` evaluated for its corresponding slot                                    |
 | `applyDepositForBuilder`           | `Gloas/Operations.lean:120-128`      | A deposit with an invalid signature is neither applied to a builder's balance nor requeued                                         |
 | `processBuilderDepositRequest`     | `Gloas/Operations.lean:174-190`      | A new builder is onboarded only when its deposit signature is valid                                                                |
@@ -73,7 +76,7 @@ never decreasing, never shrinking, never losing a previously-added element.
 | -------------------- | ------------------------------- | ------------------------------------------------------------ |
 | `getWeight`          | `Gloas/ForkChoice.lean:359-369` | Weight only grows as more attestations accumulate for a node |
 | `onAttesterSlashing` | `Gloas/ForkChoice.lean:791-801` | The set of equivocating indices only grows, never shrinks    |
-| `updateCheckpoints`  | `Gloas/ForkChoice.lean:470-472` | Justified/finalized epochs never decrease                    |
+| `updateCheckpoints`  | `Gloas/ForkChoice.lean:470-472` | **Proved**, see `EthCLSpecs/Proofs/UpdateCheckpoints.lean`. Each justified/finalized checkpoint either remains unchanged or advances to its candidate, so its epoch never decreases, and no other Store field moves. |
 
 ---
 
@@ -115,7 +118,7 @@ incidental, it's what the function does.
 | --------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `upgradeToGloas`      | `Gloas/Upgrade.lean:101-156` | Preserves inherited state while correctly initializing the new ePBS state                                                                                            |
 | `computePtcFromFulu`  | `Gloas/Upgrade.lean:35-43`   | Agrees with `Gloas.computePtc` once the state is upgraded                                                                                                            |
-| `initializePtcWindow` | `Gloas/Upgrade.lean:50-60`   | **In review**, see `EthCLSpecs/Proofs/InitializePtcWindow.lean`. The first `SLOTS_PER_EPOCH` entries are the empty committee, and every remaining entry equals `computePtcFromFulu` at the slot computed by `initializePtcWindow` |
+| `initializePtcWindow` | `Gloas/Upgrade.lean:50-60`   | **Proved**, see `EthCLSpecs/Proofs/InitializePtcWindow.lean`. The first `SLOTS_PER_EPOCH` entries are the empty committee, and every remaining entry equals `computePtcFromFulu` at the slot computed by `initializePtcWindow`. |
 
 ---
 
