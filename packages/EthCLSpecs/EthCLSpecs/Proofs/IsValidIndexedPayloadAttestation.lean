@@ -52,12 +52,12 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff_checks [Preset] [HasherTag]
         a.signature = true := by
   simp [isValidIndexedPayloadAttestation, and_assoc]
 
-/-! ## Layer 2: core-only bridge lemmas, then the public semantic theorem -/
+/-! ## Layer 2: private core-only bridge lemmas, then the public semantic theorem -/
 
 /-- Bridges the adjacent nondecreasing check
 `isValidIndexedPayloadAttestation` performs (`Array.range` + `all` + `Option.getD`) into
 an indexed inequality between consecutive elements. -/
-theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array ValidatorIndex) :
+private theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array ValidatorIndex) :
     (Array.range (idx.size - 1)).all
         (fun i => idx[i]?.getD default ≤ idx[i + 1]?.getD default) = true ↔
       ∀ i (h : i + 1 < idx.size), idx[i]'(by omega) ≤ idx[i + 1]'h := by
@@ -80,7 +80,7 @@ theorem indexedPayloadAttestation_adjacentNondecreasing_iff (idx : Array Validat
 
 /-- Bridges the in-range check `isValidIndexedPayloadAttestation` performs
 (`Array.all` over the raw elements) into a per-index bound. -/
-theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
+private theorem indexedPayloadAttestation_indicesInRange_iff [Preset] [HasherTag]
     (state : State) (idx : Array ValidatorIndex) :
     idx.all (fun i => i.toNat < (sszGet state validators).size) = true ↔
       ∀ i (h : i < idx.size), (idx[i]'h).toNat < (sszGet state validators).size := by
