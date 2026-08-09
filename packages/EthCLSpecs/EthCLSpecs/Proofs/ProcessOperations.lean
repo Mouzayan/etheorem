@@ -4,10 +4,11 @@ import EthCLSpecs.Gloas.Transition
 # `EthCLSpecs.Proofs.ProcessOperations`: deposit gate and successful-run characterization
 
 Exact deposit-gate and successful-run characterization of Gloas
-`processOperations` over the concrete `EStateM` runner. One theorem rejects a
-non-empty in-block deposit list at the opening assert; the other characterizes a
-successful `.run` exactly as empty deposits plus the six operation-family loops
-succeeding in implementation order with threaded states. Handlers stay opaque.
+`processOperations` over the concrete `EStateM` runner. Public names live in
+`EthCLSpecs.Proofs.Gloas`. One theorem rejects a non-empty in-block deposit list
+at the opening assert; the other characterizes a successful `.run` exactly as
+empty deposits plus the six operation-family loops succeeding in
+implementation order with threaded states. Handlers stay opaque.
 
 `processOperations` is the operations coordinator within `processBlock`; these
 theorems do not characterize the complete block-processing pipeline.
@@ -22,7 +23,7 @@ rather than rolling them back.
 
 set_option autoImplicit false
 
-namespace EthCLSpecs.Proofs
+namespace EthCLSpecs.Proofs.Gloas
 
 open EthCLLib.Spec (HasherTag CryptoBackend StateTransitionError SpecReject SSZList)
 open scoped EthCLLib.Spec
@@ -275,4 +276,4 @@ theorem processOperations_run_ok_iff [Preset] [HasherTag] [Config] [CryptoBacken
       (processOperationsLoops_run_ok_iff body pre post).mpr hloops
     rwa [processOperations_run_eq_loops body pre htrue]
 
-end EthCLSpecs.Proofs
+end EthCLSpecs.Proofs.Gloas

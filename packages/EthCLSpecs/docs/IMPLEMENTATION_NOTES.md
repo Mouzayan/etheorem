@@ -709,12 +709,10 @@ separation.
   placeholder and the remainder computed via `computePtcFromFulu`), plus a
   `default` corollary for the first region.
 
-- **`Proofs/ProcessOperations.lean`** gives an exact deposit-gate and
-  successful-run characterization of Gloas `processOperations` over the concrete
-  `EStateM` runner. Non-empty deposits fail immediately with the pre-state
-  preserved; success is equivalent to all six operation-family loops succeeding
-  sequentially with threaded states. Handlers remain opaque, and no rollback
-  guarantee is claimed for later handler failures.
+- **`Proofs/ProcessOperations.lean`** places its public declarations in
+  `EthCLSpecs.Proofs.Gloas`. It characterizes Gloas `processOperations` over
+  the concrete `EStateM` runner; handlers and later failure postconditions
+  remain opaque.
 
 - **`Proofs/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
