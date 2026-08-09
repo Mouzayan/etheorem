@@ -5,10 +5,10 @@ import EthCLSpecs.Gloas.Transition
 
 Exact deposit-gate and successful-run characterization of Gloas
 `processOperations` over the concrete `EStateM` runner. Public names live in
-`EthCLSpecs.Proofs.Gloas`. One theorem rejects a non-empty in-block deposit list
-at the opening assert; the other characterizes a successful `.run` exactly as
-empty deposits plus the six operation-family loops succeeding in
-implementation order with threaded states. Handlers stay opaque.
+`EthCLSpecs.Proofs.Gloas`. The structural coordinator equation
+(`processOperations_eq_seq`) equates `processOperations` to the deposit assert
+plus the six operation-family folds; the deposit-gate error and successful-run
+characterizations follow from it. Handlers stay opaque and may modify state.
 
 `processOperations` is the operations coordinator within `processBlock`; these
 theorems do not characterize the complete block-processing pipeline.
@@ -88,8 +88,12 @@ private theorem forIn_ops_eq_processOperationsForM [Preset] [HasherTag] :
     (g := fun (_ : α) (_ : PUnit) (_ : PUnit) => PUnit.unit)]
   simp only [ForM.forM, Array.forM, map_const_eq_bind_pure, run_eq_bind_pure_unit]
 
-/-- `processOperations` is the deposit assert followed by the six family folds. -/
-private theorem processOperations_eq_seq [Preset] [HasherTag] [Config] [CryptoBackend] :
+/-- Structural coordinator equation: `processOperations` equals the deposit
+assert followed by the six operation-family folds in implementation order. The
+deposit-gate error and successful-run characterizations follow from this
+equation. Handlers stay opaque and may modify state; this theorem does not claim
+that other state fields remain unchanged. -/
+theorem processOperations_eq_seq [Preset] [HasherTag] [Config] [CryptoBackend] :
     ∀ (body : BeaconBlockBody),
       processOperations (StateTransition := ProcessOperationsRun) body = (do
         assert (body.deposits.size == 0)

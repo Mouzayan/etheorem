@@ -34,9 +34,10 @@ Re-exports:
   (`getPtcElseOffset_lt_same_slot`).
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
-* `EthCLSpecs.Proofs.ProcessOperations`: Gloas `processOperations` deposit-gate
-  failure and exact coordinator/success sequencing. Its public declarations
-  live in `EthCLSpecs.Proofs.Gloas`; handlers remain opaque.
+* `EthCLSpecs.Proofs.ProcessOperations`: Gloas `processOperations` structural
+  coordinator equation (`processOperations_eq_seq`), deposit-gate failure, and
+  exact success sequencing under `EthCLSpecs.Proofs.Gloas`; handlers remain
+  opaque and may modify state.
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
