@@ -33,13 +33,6 @@ open EthCLSpecs.Gloas (
   processProposerSlashing processAttesterSlashing processAttestation
   processVoluntaryExit processBlsToExecutionChange processPayloadAttestation)
 
-/-- Non-empty deposits make the opening `== 0` check false. -/
-private theorem deposits_size_beq_zero_eq_false :
-    ∀ {α : Type} {cap : Nat} (deposits : SSZList α cap),
-      deposits.size ≠ 0 → (deposits.size == 0) = false := by
-  intro α cap deposits hne
-  exact beq_eq_false_iff_ne.2 hne
-
 section
 variable [Preset] [HasherTag]
 
@@ -57,13 +50,6 @@ abbrev processOperationsForM
     (ops : SSZList α cap) (handler : α → ProcessOperationsRun Unit) :
     ProcessOperationsRun Unit :=
   ForM.forM ops.val handler
-
-/-- Unit-returning `EStateM` actions absorb a trailing `pure ()`. -/
-private theorem run_eq_bind_pure_unit :
-    ∀ (x : ProcessOperationsRun Unit),
-      (x >>= fun _ => pure PUnit.unit) = x := by
-  intro x
-  exact bind_pure_unit
 
 /-- `(fun _ => a) <$> x` equals `x >>= fun _ => pure a` on `EStateM`. -/
 private theorem map_const_eq_bind_pure :
@@ -96,7 +82,7 @@ private theorem forIn_ops_eq_processOperationsForM :
   rw [hbody, Array.forIn_yield_eq_foldlM
     (f := fun a (_ : PUnit) => handler a)
     (g := fun (_ : α) (_ : PUnit) (_ : PUnit) => PUnit.unit)]
-  simp only [ForM.forM, Array.forM, map_const_eq_bind_pure, run_eq_bind_pure_unit]
+  simp only [ForM.forM, Array.forM, map_const_eq_bind_pure, bind_pure_unit]
 
 /-- Success of `x >>= f` on `ProcessOperationsRun Unit` unpacks to an intermediate
 state where `x` succeeded and `f` continued from there. -/
@@ -150,7 +136,7 @@ theorem processOperations_nonempty_deposits_error :
   intro body pre hne
   rw [processOperations_eq_seq]
   have hfalse : (body.deposits.size == 0) = false :=
-    deposits_size_beq_zero_eq_false body.deposits hne
+    beq_eq_false_iff_ne.2 hne
   simp [hfalse, EStateM.run, Bind.bind, EStateM.bind, throw, throwThe,
     MonadExceptOf.throw, EStateM.throw, SpecReject.assert]
 
@@ -201,32 +187,8 @@ private theorem processOperationsLoops_run_ok_iff :
             .ok () post := by
   intro body pre post
   rw [processOperationsLoops_eq_binds]
-  constructor
-  · intro hok
-    rw [run_bind_unit_ok_iff] at hok
-    obtain ⟨afterproposers, h1, hrest1⟩ := hok
-    rw [run_bind_unit_ok_iff] at hrest1
-    obtain ⟨afterattesters, h2, hrest2⟩ := hrest1
-    rw [run_bind_unit_ok_iff] at hrest2
-    obtain ⟨afterattestations, h3, hrest3⟩ := hrest2
-    rw [run_bind_unit_ok_iff] at hrest3
-    obtain ⟨afterexits, h4, hrest4⟩ := hrest3
-    rw [run_bind_unit_ok_iff] at hrest4
-    obtain ⟨afterchanges, h5, h6⟩ := hrest4
-    exact ⟨afterproposers, afterattesters, afterattestations, afterexits, afterchanges,
-      h1, h2, h3, h4, h5, h6⟩
-  · intro ⟨afterproposers, afterattesters, afterattestations, afterexits, afterchanges,
-        h1, h2, h3, h4, h5, h6⟩
-    rw [run_bind_unit_ok_iff]
-    refine ⟨afterproposers, h1, ?_⟩
-    rw [run_bind_unit_ok_iff]
-    refine ⟨afterattesters, h2, ?_⟩
-    rw [run_bind_unit_ok_iff]
-    refine ⟨afterattestations, h3, ?_⟩
-    rw [run_bind_unit_ok_iff]
-    refine ⟨afterexits, h4, ?_⟩
-    rw [run_bind_unit_ok_iff]
-    exact ⟨afterchanges, h5, h6⟩
+  simp only [run_bind_unit_ok_iff, exists_and_left]
+
 
 /-- After a successful deposit assert, `processOperations` is the six loops. -/
 private theorem processOperations_run_eq_loops :
@@ -288,6 +250,7 @@ theorem processOperations_run_ok_iff :
 
 end
 end
+
 
 
 end EthCLSpecs.Proofs.Gloas
