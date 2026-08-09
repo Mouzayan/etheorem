@@ -1,24 +1,35 @@
 import EthCLSpecs.Gloas.Transition
 
 /-!
-# `EthCLSpecs.Proofs.ProcessOperations`: deposit gate and successful-run characterization
+# `EthCLSpecs.Proofs.ProcessOperations`: Gloas coordinator sequencing
 
-Exact deposit-gate and successful-run characterization of Gloas
-`processOperations` over the concrete `EStateM` runner. Public names live in
-`EthCLSpecs.Proofs.Gloas`. The structural coordinator equation
-(`processOperations_eq_seq`) equates `processOperations` to the deposit assert
-plus the six operation-family folds; the deposit-gate error and successful-run
-characterizations follow from it. Handlers stay opaque and may modify state.
+Public declarations live in `EthCLSpecs.Proofs.Gloas`. Over the concrete
+`EStateM` runner they establish three facts about Gloas `processOperations`,
+the operations coordinator inside `processBlock`:
 
-`processOperations` is the operations coordinator within `processBlock`; these
-theorems do not characterize the complete block-processing pipeline.
+* `processOperations_eq_seq` equates the coordinator to the opening deposit
+  assertion followed by six operation-family folds in implementation order.
+* `processOperations_nonempty_deposits_error` shows that non-empty in-block
+  deposits fail that assertion immediately and leave the pre-state unchanged.
+* `processOperations_run_ok_iff` characterizes success as empty deposits plus
+  those six folds succeeding in sequence.
 
-This module characterizes the coordinator's deposit gate and sequencing. It does
-not establish complete correctness of operation processing: per-operation
-handler postconditions sit outside its scope. Only the initial deposit assertion
-is proved to preserve the pre-state on failure. Later handler failure states are
-not characterized here; `EStateM` retains state changes made before a failure
-rather than rolling them back.
+The implementation's `for op in ops do handler op` loops elaborate to `forIn`
+over `SSZList`. This module names that fold `processOperationsForM`
+(`ForM.forM ops.val handler`) and rewrites each loop to it, so the coordinator
+equation and the success characterization speak in named folds rather than raw
+`forIn` terms.
+
+On the success path, each `ProcessOperationsRun Unit` bind unpacks through
+`run_bind_unit_ok_iff` into an intermediate state. The successful-run theorem
+threads five such states between the six folds, with the caller's `post` as the
+final state.
+
+Handlers stay opaque: the theorems constrain sequencing and the deposit gate,
+not per-operation postconditions. Only the opening deposit assertion is proved
+to preserve `pre` on failure. Later handler failures leave whatever state
+`EStateM` retained after earlier successful steps; this module leaves those
+states uncharacterized.
 -/
 
 set_option autoImplicit false
