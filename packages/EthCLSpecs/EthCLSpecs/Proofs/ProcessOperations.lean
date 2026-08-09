@@ -33,8 +33,18 @@ open EthCLSpecs.Gloas (
   processProposerSlashing processAttesterSlashing processAttestation
   processVoluntaryExit processBlsToExecutionChange processPayloadAttestation)
 
+/-- Non-empty deposits make the opening `== 0` check false. -/
+private theorem deposits_size_beq_zero_eq_false :
+    ∀ {α : Type} {cap : Nat} (deposits : SSZList α cap),
+      deposits.size ≠ 0 → (deposits.size == 0) = false := by
+  intro α cap deposits hne
+  exact beq_eq_false_iff_ne.2 hne
+
+section
+variable [Preset] [HasherTag]
+
 /-- Concrete state-transition monad for Gloas `processOperations` theorems. -/
-abbrev ProcessOperationsRun [Preset] [HasherTag] :=
+abbrev ProcessOperationsRun :=
   EStateM StateTransitionError State
 
 /-- Left-to-right monadic fold of a body's operation list through its handler.
@@ -42,21 +52,21 @@ Definitionally `ForM.forM ops.val handler`, which is
 `ops.val.foldlM (fun _ => handler) ⟨⟩`. This is the `forIn` expression Lean
 emits for each `for op in ops do handler op` inside `processOperations` (the
 `SSZList` instance delegates to `Array`, and an always-yielding body folds). -/
-abbrev processOperationsForM [Preset] [HasherTag]
+abbrev processOperationsForM
     {α : Type} {cap : Nat}
     (ops : SSZList α cap) (handler : α → ProcessOperationsRun Unit) :
     ProcessOperationsRun Unit :=
   ForM.forM ops.val handler
 
 /-- Unit-returning `EStateM` actions absorb a trailing `pure ()`. -/
-private theorem run_eq_bind_pure_unit [Preset] [HasherTag] :
+private theorem run_eq_bind_pure_unit :
     ∀ (x : ProcessOperationsRun Unit),
       (x >>= fun _ => pure PUnit.unit) = x := by
   intro x
   exact bind_pure_unit
 
 /-- `(fun _ => a) <$> x` equals `x >>= fun _ => pure a` on `EStateM`. -/
-private theorem map_const_eq_bind_pure [Preset] [HasherTag] :
+private theorem map_const_eq_bind_pure :
     ∀ {α β : Type} (x : ProcessOperationsRun α) (a : β),
       (fun _ => a) <$> x = (x >>= fun _ => pure a) := by
   intro α β x a
@@ -64,7 +74,7 @@ private theorem map_const_eq_bind_pure [Preset] [HasherTag] :
 
 /-- The elaborated `forIn` body of `for op in ops do handler op` equals
 `processOperationsForM`. -/
-private theorem forIn_ops_eq_processOperationsForM [Preset] [HasherTag] :
+private theorem forIn_ops_eq_processOperationsForM :
     ∀ {α : Type} {cap : Nat} (ops : SSZList α cap)
       (handler : α → ProcessOperationsRun Unit),
       forIn ops PUnit.unit (fun op (_ : PUnit) => do
@@ -88,12 +98,30 @@ private theorem forIn_ops_eq_processOperationsForM [Preset] [HasherTag] :
     (g := fun (_ : α) (_ : PUnit) (_ : PUnit) => PUnit.unit)]
   simp only [ForM.forM, Array.forM, map_const_eq_bind_pure, run_eq_bind_pure_unit]
 
+/-- Success of `x >>= f` on `ProcessOperationsRun Unit` unpacks to an intermediate
+state where `x` succeeded and `f` continued from there. -/
+private theorem run_bind_unit_ok_iff :
+    ∀ (x : ProcessOperationsRun Unit) (f : Unit → ProcessOperationsRun Unit)
+      (s post : State),
+      (x >>= f).run s = .ok () post ↔
+        ∃ s', x.run s = .ok () s' ∧ (f ()).run s' = .ok () post := by
+  intro x f s post
+  cases hx : x s with
+  | ok u s' =>
+    cases u
+    simp [EStateM.run, Bind.bind, EStateM.bind, hx]
+  | error e s' =>
+    simp [EStateM.run, Bind.bind, EStateM.bind, hx]
+
+section
+variable [Config] [CryptoBackend]
+
 /-- Structural coordinator equation: `processOperations` equals the deposit
 assert followed by the six operation-family folds in implementation order. The
 deposit-gate error and successful-run characterizations follow from this
 equation. Handlers stay opaque and may modify state; this theorem does not claim
 that other state fields remain unchanged. -/
-theorem processOperations_eq_seq [Preset] [HasherTag] [Config] [CryptoBackend] :
+theorem processOperations_eq_seq :
     ∀ (body : BeaconBlockBody),
       processOperations (StateTransition := ProcessOperationsRun) body = (do
         assert (body.deposits.size == 0)
@@ -107,20 +135,13 @@ theorem processOperations_eq_seq [Preset] [HasherTag] [Config] [CryptoBackend] :
   unfold processOperations
   simp only [forIn_ops_eq_processOperationsForM, bind_pure_unit]
 
-/-- Non-empty deposits make the opening `== 0` check false. -/
-private theorem deposits_size_beq_zero_eq_false :
-    ∀ {α : Type} {cap : Nat} (deposits : SSZList α cap),
-      deposits.size ≠ 0 → (deposits.size == 0) = false := by
-  intro α cap deposits hne
-  exact beq_eq_false_iff_ne.2 hne
-
 /-- Deposit-gate characterization: non-empty in-block deposits fail the opening
 assertion immediately. The error is an `assert` constructor; its diagnostic
 string is existential and unpinned in the statement. Only this initial gate is
 claimed to preserve `pre`. Later handler failure states are not characterized
 here; `EStateM` retains state changes made before a failure rather than rolling
 them back. -/
-theorem processOperations_nonempty_deposits_error [Preset] [HasherTag] [Config] [CryptoBackend] :
+theorem processOperations_nonempty_deposits_error :
     ∀ (body : BeaconBlockBody) (pre : State),
       body.deposits.size ≠ 0 →
       ∃ descr : String,
@@ -133,23 +154,8 @@ theorem processOperations_nonempty_deposits_error [Preset] [HasherTag] [Config] 
   simp [hfalse, EStateM.run, Bind.bind, EStateM.bind, throw, throwThe,
     MonadExceptOf.throw, EStateM.throw, SpecReject.assert]
 
-/-- Success of `x >>= f` on `ProcessOperationsRun Unit` unpacks to an intermediate
-state where `x` succeeded and `f` continued from there. -/
-private theorem run_bind_unit_ok_iff [Preset] [HasherTag] :
-    ∀ (x : ProcessOperationsRun Unit) (f : Unit → ProcessOperationsRun Unit)
-      (s post : State),
-      (x >>= f).run s = .ok () post ↔
-        ∃ s', x.run s = .ok () s' ∧ (f ()).run s' = .ok () post := by
-  intro x f s post
-  cases hx : x s with
-  | ok u s' =>
-    cases u
-    simp [EStateM.run, Bind.bind, EStateM.bind, hx]
-  | error e s' =>
-    simp [EStateM.run, Bind.bind, EStateM.bind, hx]
-
 /-- The six family folds as a single `ProcessOperationsRun` action. -/
-private abbrev processOperationsLoops [Preset] [HasherTag] [Config] [CryptoBackend]
+private abbrev processOperationsLoops
     (body : BeaconBlockBody) : ProcessOperationsRun Unit := do
   processOperationsForM body.proposerSlashings processProposerSlashing
   processOperationsForM body.attesterSlashings processAttesterSlashing
@@ -159,7 +165,7 @@ private abbrev processOperationsLoops [Preset] [HasherTag] [Config] [CryptoBacke
   processOperationsForM body.payloadAttestations processPayloadAttestation
 
 /-- `processOperationsLoops` is the six `processOperationsForM` steps in bind form. -/
-private theorem processOperationsLoops_eq_binds [Preset] [HasherTag] [Config] [CryptoBackend] :
+private theorem processOperationsLoops_eq_binds :
     ∀ (body : BeaconBlockBody),
       processOperationsLoops body =
         (processOperationsForM body.proposerSlashings processProposerSlashing >>= fun _ =>
@@ -172,7 +178,7 @@ private theorem processOperationsLoops_eq_binds [Preset] [HasherTag] [Config] [C
   rfl
 
 /-- Unpack success of the six loops into the five intermediate states plus `post`. -/
-private theorem processOperationsLoops_run_ok_iff [Preset] [HasherTag] [Config] [CryptoBackend] :
+private theorem processOperationsLoops_run_ok_iff :
     ∀ (body : BeaconBlockBody) (pre post : State),
       (processOperationsLoops body).run pre = .ok () post ↔
         ∃ afterproposers afterattesters afterattestations afterexits afterchanges : State,
@@ -223,7 +229,7 @@ private theorem processOperationsLoops_run_ok_iff [Preset] [HasherTag] [Config] 
     exact ⟨afterchanges, h5, h6⟩
 
 /-- After a successful deposit assert, `processOperations` is the six loops. -/
-private theorem processOperations_run_eq_loops [Preset] [HasherTag] [Config] [CryptoBackend] :
+private theorem processOperations_run_eq_loops :
     ∀ (body : BeaconBlockBody) (pre : State),
       (body.deposits.size == 0) = true →
       (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
@@ -238,7 +244,7 @@ six operation-family loops succeed sequentially, each from the preceding loop's
 resulting state. Five existential intermediate states; `post` is the supplied
 final state. Handlers stay opaque, so this is a coordinator sequencing
 characterization rather than complete correctness of operation processing. -/
-theorem processOperations_run_ok_iff [Preset] [HasherTag] [Config] [CryptoBackend] :
+theorem processOperations_run_ok_iff :
     ∀ (body : BeaconBlockBody) (pre post : State),
       (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
           .ok () post ↔
@@ -279,5 +285,9 @@ theorem processOperations_run_ok_iff [Preset] [HasherTag] [Config] [CryptoBacken
     have hok : (processOperationsLoops body).run pre = .ok () post :=
       (processOperationsLoops_run_ok_iff body pre post).mpr hloops
     rwa [processOperations_run_eq_loops body pre htrue]
+
+end
+end
+
 
 end EthCLSpecs.Proofs.Gloas
