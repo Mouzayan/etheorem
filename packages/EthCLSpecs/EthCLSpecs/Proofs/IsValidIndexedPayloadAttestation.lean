@@ -1,4 +1,5 @@
 import EthCLSpecs.Gloas.Operations
+import SizzLean.Proofs.SSZListGetElem
 
 /-!
 # `EthCLSpecs.Proofs.IsValidIndexedPayloadAttestation`: a two-layer characterization
@@ -45,6 +46,7 @@ open EthCLSpecs.Fulu (Preset ValidatorIndex)
 open EthCLSpecs.Fulu.Const (domainPtcAttester)
 open EthCLSpecs.Gloas
   (State IndexedPayloadAttestation isValidIndexedPayloadAttestation getDomain computeEpochAtSlot)
+open SizzLean.Proofs (sszListMap_getElem!_eq_attachMap)
 
 /-! ## Layer 1: the literal characterization -/
 
@@ -101,22 +103,6 @@ private theorem indexedPayloadAttestation_indicesInRange_iff
     idx.all (fun i => i.toNat < n) = true ↔ ∀ i ∈ idx, i.toNat < n := by
   simp only [Array.all_eq_true', decide_eq_true_eq]
 
-/-- Replaces the implementation's total `vs[i.toNat]!` reads with in-bounds
-`Array.attach` reads, given that every index of `idx` is in range. This is what
-keeps `!` out of the public statement below. Stated for an arbitrary `SSZList` and
-projection `f`, since neither the element type nor `Validator.pubkey` matters. -/
-private theorem map_getElem!_eq_attach_map {α β : Type} [Inhabited α] {cap : Nat}
-    (vs : SizzLean.Repr.SSZList α cap) (idx : Array ValidatorIndex) (f : α → β)
-    (hRange : ∀ i ∈ idx, i.toNat < vs.size) :
-    idx.map (fun i => f vs[i.toNat]!)
-      = idx.attach.map (fun i => f (vs[i.1.toNat]'(hRange i.1 i.2))) := by
-  apply Array.ext
-  · simp
-  · intro i _ _
-    simp only [Array.getElem_map, Array.getElem_attach]
-    -- `getElem!_pos` discharges the `!` once the element is known in bounds.
-    rw [getElem!_pos]
-
 /-- Public semantic characterization: non-empty, adjacent-nondecreasing, in-range
 indices, and the configured `[CryptoBackend]` returning `true` on the
 implementation's exact aggregate-verification call. The in-range conjunct binds its
@@ -141,8 +127,8 @@ theorem isValidIndexedPayloadAttestation_eq_true_iff [Preset] [HasherTag] [Crypt
   refine and_congr_right (fun _ => and_congr_right (fun _ => ?_))
   constructor
   · rintro ⟨hRange, hVerify⟩
-    exact ⟨hRange, by rwa [map_getElem!_eq_attach_map _ _ _ hRange] at hVerify⟩
+    exact ⟨hRange, by rwa [sszListMap_getElem!_eq_attachMap _ _ _ _ hRange] at hVerify⟩
   · rintro ⟨hRange, hVerify⟩
-    exact ⟨hRange, by rwa [map_getElem!_eq_attach_map _ _ _ hRange]⟩
+    exact ⟨hRange, by rwa [sszListMap_getElem!_eq_attachMap _ _ _ _ hRange]⟩
 
 end EthCLSpecs.Proofs
