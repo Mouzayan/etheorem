@@ -1,8 +1,10 @@
 import EthCLSpecs.Proofs.BuilderIndex
 import EthCLSpecs.Proofs.BuilderPendingPayments
+import EthCLSpecs.Proofs.CanBuilderCoverBid
 import EthCLSpecs.Proofs.GetPtc
 import EthCLSpecs.Proofs.InitializePtcWindow
 import EthCLSpecs.Proofs.InitiateBuilderExit
+import EthCLSpecs.Proofs.IsValidIndexedPayloadAttestation
 import EthCLSpecs.Proofs.Run
 import EthCLSpecs.Proofs.UpdateCheckpoints
 
@@ -26,6 +28,8 @@ Re-exports:
   withdrawal-queuing and payment-window-shift postcondition
   (`processBuilderPendingPayments_run`, plus
   `processBuilderPendingPayments_run_of_fits`).
+* `EthCLSpecs.Proofs.CanBuilderCoverBid`: the exact `Bool`-vs-`UInt64`-inequality
+  characterization of `canBuilderCoverBid`.
 * `EthCLSpecs.Proofs.GetPtc`: `getPtc`'s else-branch `ptcWindow` offset bound,
   for the `data.slot + 1 == state.slot` caller (`getPtcElseOffset`,
   `getPtcElseOffset_lt_next_slot`) and the `slot == curSlot` fork-choice replay callers
@@ -36,6 +40,10 @@ Re-exports:
   builder-registry `SSZList.set!` projection, and the in-range / out-of-range
   reads of that projection, with conditional and shipped-configuration no-wrap
   corollaries for the written `withdrawableEpoch`.
+* `EthCLSpecs.Proofs.IsValidIndexedPayloadAttestation`: literal and semantic
+  characterizations of `isValidIndexedPayloadAttestation`, including its adjacent
+  nondecreasing and validator-range checks. The semantic layer indexes the
+  validator registry in bounds rather than through `!`.
 * `EthCLSpecs.Proofs.Run`: `GloasRun`, the state-transition monad every Gloas
   proof in this directory pins its theorems to.
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
