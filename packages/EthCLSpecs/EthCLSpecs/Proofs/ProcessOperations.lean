@@ -1,11 +1,12 @@
 import EthCLSpecs.Gloas.Transition
+import EthCLSpecs.Proofs.Run
 
 /-!
 # `EthCLSpecs.Proofs.ProcessOperations`: Gloas coordinator sequencing
 
-Public declarations live in `EthCLSpecs.Proofs.Gloas`. Over the concrete
-`EStateM` runner they establish three facts about Gloas `processOperations`,
-the operations coordinator inside `processBlock`:
+Public declarations live in `EthCLSpecs.Proofs.Gloas`. At `GloasRun`, the
+runner every Gloas proof here pins to, they establish three facts about Gloas
+`processOperations`, the operations coordinator inside `processBlock`:
 
 * `processOperations_eq_seq` equates the coordinator to the opening deposit
   assertion followed by six operation-family folds in implementation order.
@@ -20,7 +21,7 @@ over `SSZList`. This module names that fold `processOperationsForM`
 equation and the success characterization speak in named folds rather than raw
 `forIn` terms.
 
-On the success path, each `ProcessOperationsRun Unit` bind unpacks through
+On the success path, each `GloasRun Unit` bind unpacks through
 `run_bind_unit_ok_iff` into an intermediate state. The successful-run theorem
 threads five such states between the six folds, with the caller's `post` as the
 final state.
@@ -36,7 +37,7 @@ set_option autoImplicit false
 
 namespace EthCLSpecs.Proofs.Gloas
 
-open EthCLLib.Spec (HasherTag CryptoBackend StateTransitionError SpecReject SSZList)
+open EthCLLib.Spec (HasherTag CryptoBackend SpecReject SSZList)
 open scoped EthCLLib.Spec
 open EthCLSpecs.Fulu (Preset Config)
 open EthCLSpecs.Gloas (
@@ -47,10 +48,6 @@ open EthCLSpecs.Gloas (
 section
 variable [Preset] [HasherTag]
 
-/-- Concrete state-transition monad for Gloas `processOperations` theorems. -/
-abbrev ProcessOperationsRun :=
-  EStateM StateTransitionError State
-
 /-- Left-to-right monadic fold of a body's operation list through its handler.
 Definitionally `ForM.forM ops.val handler`, which is
 `ops.val.foldlM (fun _ => handler) ⟨⟩`. This is the `forIn` expression Lean
@@ -58,13 +55,13 @@ emits for each `for op in ops do handler op` inside `processOperations` (the
 `SSZList` instance delegates to `Array`, and an always-yielding body folds). -/
 abbrev processOperationsForM
     {α : Type} {cap : Nat}
-    (ops : SSZList α cap) (handler : α → ProcessOperationsRun Unit) :
-    ProcessOperationsRun Unit :=
+    (ops : SSZList α cap) (handler : α → GloasRun Unit) :
+    GloasRun Unit :=
   ForM.forM ops.val handler
 
 /-- `(fun _ => a) <$> x` equals `x >>= fun _ => pure a` on `EStateM`. -/
 private theorem map_const_eq_bind_pure :
-    ∀ {α β : Type} (x : ProcessOperationsRun α) (a : β),
+    ∀ {α β : Type} (x : GloasRun α) (a : β),
       (fun _ => a) <$> x = (x >>= fun _ => pure a) := by
   intro α β x a
   simp [Functor.map]
@@ -73,7 +70,7 @@ private theorem map_const_eq_bind_pure :
 `processOperationsForM`. -/
 private theorem forIn_ops_eq_processOperationsForM :
     ∀ {α : Type} {cap : Nat} (ops : SSZList α cap)
-      (handler : α → ProcessOperationsRun Unit),
+      (handler : α → GloasRun Unit),
       forIn ops PUnit.unit (fun op (_ : PUnit) => do
           handler op
           pure (ForInStep.yield PUnit.unit)) =
@@ -95,10 +92,10 @@ private theorem forIn_ops_eq_processOperationsForM :
     (g := fun (_ : α) (_ : PUnit) (_ : PUnit) => PUnit.unit)]
   simp only [ForM.forM, Array.forM, map_const_eq_bind_pure, bind_pure_unit]
 
-/-- Success of `x >>= f` on `ProcessOperationsRun Unit` unpacks to an intermediate
+/-- Success of `x >>= f` on `GloasRun Unit` unpacks to an intermediate
 state where `x` succeeded and `f` continued from there. -/
 private theorem run_bind_unit_ok_iff :
-    ∀ (x : ProcessOperationsRun Unit) (f : Unit → ProcessOperationsRun Unit)
+    ∀ (x : GloasRun Unit) (f : Unit → GloasRun Unit)
       (s post : State),
       (x >>= f).run s = .ok () post ↔
         ∃ s', x.run s = .ok () s' ∧ (f ()).run s' = .ok () post := by
@@ -120,7 +117,7 @@ equation. Handlers stay opaque and may modify state; this theorem does not claim
 that other state fields remain unchanged. -/
 theorem processOperations_eq_seq :
     ∀ (body : BeaconBlockBody),
-      processOperations (StateTransition := ProcessOperationsRun) body = (do
+      processOperations (StateTransition := GloasRun) body = (do
         assert (body.deposits.size == 0)
         processOperationsForM body.proposerSlashings processProposerSlashing
         processOperationsForM body.attesterSlashings processAttesterSlashing
@@ -142,7 +139,7 @@ theorem processOperations_nonempty_deposits_error :
     ∀ (body : BeaconBlockBody) (pre : State),
       body.deposits.size ≠ 0 →
       ∃ descr : String,
-        (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
+        (processOperations (StateTransition := GloasRun) body).run pre =
           .error (.assert descr) pre := by
   intro body pre hne
   rw [processOperations_eq_seq]
@@ -151,9 +148,9 @@ theorem processOperations_nonempty_deposits_error :
   simp [hfalse, EStateM.run, Bind.bind, EStateM.bind, throw, throwThe,
     MonadExceptOf.throw, EStateM.throw, SpecReject.assert]
 
-/-- The six family folds as a single `ProcessOperationsRun` action. -/
+/-- The six family folds as a single `GloasRun` action. -/
 private abbrev processOperationsLoops
-    (body : BeaconBlockBody) : ProcessOperationsRun Unit := do
+    (body : BeaconBlockBody) : GloasRun Unit := do
   processOperationsForM body.proposerSlashings processProposerSlashing
   processOperationsForM body.attesterSlashings processAttesterSlashing
   processOperationsForM body.attestations processAttestation
@@ -205,7 +202,7 @@ private theorem processOperationsLoops_run_ok_iff :
 private theorem processOperations_run_eq_loops :
     ∀ (body : BeaconBlockBody) (pre : State),
       (body.deposits.size == 0) = true →
-      (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
+      (processOperations (StateTransition := GloasRun) body).run pre =
         (processOperationsLoops body).run pre := by
   intro body pre htrue
   rw [processOperations_eq_seq]
@@ -219,7 +216,7 @@ final state. Handlers stay opaque, so this is a coordinator sequencing
 characterization rather than complete correctness of operation processing. -/
 theorem processOperations_run_ok_iff :
     ∀ (body : BeaconBlockBody) (pre post : State),
-      (processOperations (StateTransition := ProcessOperationsRun) body).run pre =
+      (processOperations (StateTransition := GloasRun) body).run pre =
           .ok () post ↔
         body.deposits.size = 0 ∧
         ∃ afterproposers afterattesters afterattestations afterexits afterchanges : State,
