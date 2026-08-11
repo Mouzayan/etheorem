@@ -3,6 +3,7 @@ import EthCLSpecs.Proofs.BuilderPendingPayments
 import EthCLSpecs.Proofs.GetPtc
 import EthCLSpecs.Proofs.InitializePtcWindow
 import EthCLSpecs.Proofs.InitiateBuilderExit
+import EthCLSpecs.Proofs.Run
 import EthCLSpecs.Proofs.UpdateCheckpoints
 
 /-!
@@ -31,9 +32,12 @@ Re-exports:
   (`getPtcElseOffset_lt_same_slot`).
 * `EthCLSpecs.Proofs.InitializePtcWindow`: the seeded `ptcWindow`'s two
   regions (`initializePtcWindow`).
-* `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit_run_eq` and its
-  observable builder-registry projections, with conditional and
-  shipped-configuration no-wrap corollaries for the written `withdrawableEpoch`.
+* `EthCLSpecs.Proofs.InitiateBuilderExit`: `initiateBuilderExit_run_eq`, its
+  builder-registry `SSZList.set!` projection, and the in-range / out-of-range
+  reads of that projection, with conditional and shipped-configuration no-wrap
+  corollaries for the written `withdrawableEpoch`.
+* `EthCLSpecs.Proofs.Run`: `GloasRun`, the state-transition monad every Gloas
+  proof in this directory pins its theorems to.
 * `EthCLSpecs.Proofs.UpdateCheckpoints`: `Gloas.updateCheckpoints` checkpoint
   monotonicity, the justified/finalized epoch never decreases. Its theorems sit
   in `EthCLSpecs.Proofs.Gloas`, since `updateCheckpoints` exists in both forks.
