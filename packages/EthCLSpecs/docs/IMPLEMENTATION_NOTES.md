@@ -702,10 +702,16 @@ separation.
   `default` corollary for the first region.
 
 - **`Proofs/InitiateBuilderExit.lean`** gives the whole-transition
-  `initiateBuilderExit_run_eq` equation, characterizes its observable
-  builder-registry effects in and out of range, and proves that the
+  `initiateBuilderExit_run_eq` equation and projects it onto the builder registry
+  as one unconditional `SSZList.set!`. The in-range and out-of-range theorems read
+  that projection through `SizzLean.Proofs.SSZListSet`, so the range split happens
+  at the read rather than in a second transition proof. It also proves that the
   withdrawability-delay addition does not wrap for the shipped minimal and
   mainnet configurations.
+
+- **`Proofs/Run.lean`** names `GloasRun`, the `EStateM StateTransitionError State`
+  the Gloas proofs pin their `forkdef` bodies to. `StateTransition` is a parameter
+  of a fork body, so every run theorem has to fix it; this fixes it once.
 
 - **`Proofs/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
