@@ -878,26 +878,20 @@ Proofs are deferred past the first milestone, the deferred proof-support layer o
 functions, fuel or well-founded recursion over `partial`, and the seven
 anti-patterns of that layer avoided in every definition.
 
-### 11.1 Proof targets by theorem scope
+### 11.1 Proofs run at the pure config only
 
-The intended target for invariant preservation, protocol-level correctness, and
-properties involving concrete cryptographic results is the pure configuration
-described by the contract's one-spec-body/two-configurations design.
+When proofs start, they run only at the pure configuration of the contract's
+one-spec-body-two-configurations duality: `UncachedBox Sha256Spec` (uncached, so the
+getter-setter laws hold by `rfl`), the pure `StateTransition` monad (`StateT` over
+`Except`), and `treeMap` (clean insert and lookup laws, relevant only to fork-choice proofs, since
+the state-transition machine holds no map).
 
-Theorems about exact runner behavior may specialize `StateTransition` to the
-concrete `EStateM StateTransitionError State` runner used by the Gloas
-interface. These theorems characterize `.run` results, state threading,
-short-circuiting, and observable state updates; see
-`EthCLSpecs.Proofs.InitiateBuilderExit` and
-`EthCLSpecs.Proofs.ProcessOperations`. These proofs may account for the cached
-and uncached Box representations, but state their conclusions through
-observable state behavior. They do not establish fast-versus-pure equivalence
-or rely on concrete hash outputs.
-
-The fully optimized configuration (`FastBox`, `EStateM`, and `hashMap`) is not
-used as a substitute for protocol-level correctness proofs. Cache coherence and
-hasher equivalence remain dependency-level obligations supplied by SizzLean's
-cache-coherence checks and the documented FFI-equivalence assumptions.
+The fast configuration (`FastBox`, `EStateM`, `hashMap`) is never a proof target.
+Conformance establishes it empirically. The fast-versus-pure gap is closed at the
+dependency level, not the spec level. SizzLean's cache-coherence test proves
+`FastBox` equals `PureBox` on the hash-tree-root, and the FFI-equivalence axioms
+handle the hasher, so there is no spec-level fast-equals-pure theorem to prove. The
+specs inherit the gap-closing from the dependency.
 
 ### 11.2 The hasher is per goal
 
