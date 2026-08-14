@@ -1,5 +1,6 @@
 import EthCLSpecs.Proofs.Gloas
 import EthCLSpecs.Proofs.Heze
+import EthCLSpecs.Proofs.StoreRun
 
 /-!
 # `EthCLSpecs.Proofs`: consensus-spec theorems (index)
@@ -35,4 +36,6 @@ Re-exports:
 
 * `EthCLSpecs.Proofs.Gloas`: the Gloas fork's theorems, one module per subject.
 * `EthCLSpecs.Proofs.Heze`: the Heze fork's theorems, one module per subject.
+* `EthCLSpecs.Proofs.StoreRun`: `ForkChoiceStoreRun`, the pure store-machine
+  runner every fork's fork-choice proofs pin at that fork's `Store`.
 -/

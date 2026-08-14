@@ -1,5 +1,6 @@
 import EthCLSpecs.Heze.ForkChoice
 import EthCLSpecs.Proofs.Gloas.Run
+import EthCLSpecs.Proofs.StoreRun
 
 /-!
 # `EthCLSpecs.Proofs.Heze.ShouldExtendPayload`: Heze's FOCIL rejection gate
@@ -9,7 +10,7 @@ inserts a FOCIL gate after payload verification and before the later timeliness,
 data-availability, and proposer-boost logic.
 This module proves that, once the common block/slot prefix succeeds, a verified
 payload with a recorded `false` inclusion-list satisfaction verdict returns `false`
-in the pure `HezeStoreRun`, leaving its runner state unchanged.
+at `ForkChoiceStoreRun (Store map)`, leaving its runner state unchanged.
 
 The theorem assumes the successful block lookup, current-slot calculation,
 non-overflowing slot increment, and recorded verdict. It does not prove verdict
@@ -25,16 +26,12 @@ set_option autoImplicit false
 
 namespace EthCLSpecs.Proofs.Heze
 
-open EthCLLib.Spec (HasherTag StoreTransitionError MapKind FcMap checkedAdd)
+open EthCLSpecs.Proofs (ForkChoiceStoreRun)
+open EthCLSpecs.Proofs.Gloas (GloasRun)
+open EthCLLib.Spec (HasherTag MapKind FcMap checkedAdd)
 open EthCLSpecs.Fulu (Preset Config Root)
 open EthCLSpecs.Heze (Store shouldExtendPayload isPayloadInclusionListSatisfied isPayloadVerified
   getCurrentSlot BeaconBlock)
-
-/-- Pure `StateT`/`Except` runner for Heze fork-choice proofs, mirroring
-`GloasStoreRun`. A separate abbreviation is required because `Heze.Store` is a
-distinct fork structure. The map backing remains abstract through `MapKind`. -/
-abbrev HezeStoreRun [Preset] [HasherTag] (map : MapKind) : Type → Type :=
-  StateT (Store map) (Except StoreTransitionError)
 
 /-- A verified payload with a recorded `false` inclusion-list satisfaction verdict
 is rejected by Heze's FOCIL gate once the preliminary block/slot checks succeed.
@@ -49,12 +46,13 @@ theorem shouldExtendPayload_run_eq_false_of_recorded_unsatisfied
     {map : MapKind} [Preset] [HasherTag] [Config] [FcMap map] :
     ∀ (store : Store map) (root : Root) (rootBlock : BeaconBlock),
       FcMap.lookup store.blocks root = some rootBlock →
-      (getCurrentSlot (StoreTransition := HezeStoreRun map) store).run store
+      (getCurrentSlot (StoreTransition := ForkChoiceStoreRun (Store map)) store).run store
         = .ok (rootBlock.slot + 1, store) →
       ¬ (rootBlock.slot + 1 < rootBlock.slot) →
       isPayloadVerified store root = true →
       FcMap.lookup store.payloadInclusionListSatisfaction root = some false →
-      (shouldExtendPayload (StoreTransition := HezeStoreRun map) store root).run store
+      (shouldExtendPayload (StoreTransition := ForkChoiceStoreRun (Store map)) store root).run
+          store
         = .ok (false, store) := by
   intro store root rootBlock hblock hcurrentslot hnooverflow hverified hunsatisfied
   -- `checkedAdd` takes its non-overflow branch under `hnooverflow`, so `nextSlot =

@@ -4,16 +4,17 @@ import EthCLSpecs.Gloas.State
 # `EthCLSpecs.Proofs.Gloas.Run`: the Gloas state-transition runner these proofs run against
 
 A theorem about a `forkdef`'s effect has to pin down the monad the spec body is
-elaborated into, since `StateTransition` is a parameter of the fork body rather than a
-fixed type. Every Gloas proof in this directory pins the same one, so it is named once
-here and instantiated at each theorem through `(StateTransition := GloasRun)`.
+elaborated into, since `StateTransition` / `StoreTransition` are parameters of the fork
+body rather than fixed types. Every Gloas state-transition proof in this directory pins
+`GloasRun`; every fork-choice store proof pins `ForkChoiceStoreRun` at the fork's `Store`.
 
 ## Which monad, and why not the fast one
 
 `SPEC_AUTHORING_MODEL.md` sets out a fast/pure duality across four axes, and names
 `StateT State (Except StateTransitionError)` as the proving column's effect monad;
 `SPECS_ARCHITECTURE.md` §11.1 states that the fast configuration (`FastBox`, `EStateM`,
-`hashMap`) is never a proof target. This is that monad.
+`hashMap`) is never a proof target. This is that monad, for both the state machine
+(`GloasRun`) and the store machine (`ForkChoiceStoreRun`).
 
 No fork body names it. The three raw constraints `state_section` emits (`Monad`,
 `MonadStateOf State`, `MonadExceptOf StateTransitionError`) all resolve for `StateT` over
@@ -52,6 +53,16 @@ boxed Gloas `BeaconState` and rejecting with `StateTransitionError`. `abbrev`
 `.ok (a, state')` and a rejecting one reads `.error e`, carrying no state. -/
 abbrev GloasRun [Preset] [HasherTag] : Type → Type :=
   StateT State (Except StateTransitionError)
+
+/-- Pure runner for fork-choice store proofs: `StateT` over `Except`, threading an
+arbitrary store state `σ` and rejecting with `StoreTransitionError`. The store-side
+counterpart of `GloasRun`, and the store-side reading of `SPECS_ARCHITECTURE.md` §11.1.
+
+Parameterized by the store type rather than a fork-specific `Store`, so Gloas and Heze
+(and any later fork) pin `(StoreTransition := ForkChoiceStoreRun (Store map))` at the same
+shared name. -/
+abbrev ForkChoiceStoreRun (σ : Type) : Type → Type :=
+  StateT σ (Except StoreTransitionError)
 
 /-! ## Running a bind
 
