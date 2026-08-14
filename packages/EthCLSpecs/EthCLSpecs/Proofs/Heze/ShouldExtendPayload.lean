@@ -4,39 +4,21 @@ import EthCLSpecs.Proofs.Gloas.Run
 /-!
 # `EthCLSpecs.Proofs.Heze.ShouldExtendPayload`: Heze's FOCIL rejection gate
 
-Public declarations live in `EthCLSpecs.Proofs.Heze`, since `shouldExtendPayload` exists
-in both Gloas and Heze and this module's theorem is about the Heze override alone
-(`EthCLSpecs/Proofs/Gloas/UpdateCheckpoints.lean` documents the same naming reason for
-`updateCheckpoints`).
+Heze's `shouldExtendPayload` follows the Gloas fork-choice decision flow but
+inserts a FOCIL gate after payload verification and before the later timeliness,
+data-availability, and proposer-boost logic.
+This module proves that, once the common block/slot prefix succeeds, a verified
+payload with a recorded `false` inclusion-list satisfaction verdict returns `false`
+in the pure `HezeStoreRun`, leaving its runner state unchanged.
 
-Heze's EIP-7805 fork adds one gate to Gloas's `should_extend_payload`: after the
-ordinary `is_payload_verified` check, a payload whose recorded inclusion-list
-satisfaction verdict is `false` is not extended, before any of the later timeliness,
-data-availability, or proposer-boost reads run. This module proves that gate fires:
-`shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` shows that once the
-preliminary block/slot checks succeed and the payload is verified, a `false` recorded
-verdict alone determines the result, at the pure `HezeStoreRun` monad this file also
-names (the store-side sibling of `GloasStoreRun` in `Proofs/Gloas/ForkChoiceRun.lean`, used
-here rather than the `EStateM` pin configuration because the theorem's `.run store`
-equation states non-mutation of the store directly, with no separate frame lemma
-needed).
+The theorem assumes the successful block lookup, current-slot calculation,
+non-overflowing slot increment, and recorded verdict. It does not prove verdict
+production or correctness, the payload/verdict pairing invariant, missing-record
+behavior, inclusion-list construction or validation, or end-to-end canonicality
+and liveness.
 
-The preliminary preconditions the theorem still takes as hypotheses, rather than
-proving: `store.blocks[root]` resolving to a concrete block, `getCurrentSlot store`
-already equal to `rootBlock.slot + 1` (so the slot-equality assertion the
-implementation opens with does not fire its own reject), and that addition not
-overflowing. None of those are FOCIL-specific; they are the same guard Gloas's
-`should_extend_payload` opens with, unconditional on the inclusion-list gate this
-module is about.
-
-Out of scope: how a `payloadInclusionListSatisfaction` verdict comes to be recorded
-(`onExecutionPayloadEnvelope`'s write, and the invariant that it always accompanies a
-`payloads` write), the missing-record `assert` branch this precondition rules out,
-execution-engine correctness, inclusion-list ingestion and validation, PTC committee
-selection, signature verification, transaction collection, block production, P2P
-propagation, global fork-choice canonicality, and liveness. This module claims only
-that the gate rejects when given an already-recorded `false` verdict, nothing about
-where that verdict comes from or whether it is correct.
+The theorem lives in `EthCLSpecs.Proofs.Heze` because `shouldExtendPayload` exists
+in both Gloas and Heze.
 -/
 
 set_option autoImplicit false
@@ -48,33 +30,21 @@ open EthCLSpecs.Fulu (Preset Config Root Slot)
 open EthCLSpecs.Heze (Store shouldExtendPayload isPayloadInclusionListSatisfied isPayloadVerified
   getCurrentSlot BeaconBlock)
 
-/-- The Heze store machine's pure monad: `StateT` over `Except`, threading the Heze
-fork-choice `Store` and rejecting with `StoreTransitionError`. The Heze-side sibling of
-`GloasStoreRun` (`Proofs/Gloas/ForkChoiceRun.lean`): a separate abbrev because `Heze.Store` is
-its own `forkstruct`, distinct from `Gloas.Store`, not a renaming of the same type.
-
-Parameterized by the map backing rather than fixed to `treeMap`, because the
-runner representation and map backing are independent implementation choices;
-the theorem requires only the abstract `FcMap` interface. -/
+/-- Pure `StateT`/`Except` runner for Heze fork-choice proofs, mirroring
+`GloasStoreRun`. A separate abbreviation is required because `Heze.Store` is a
+distinct fork structure. The map backing remains abstract through `MapKind`. -/
 abbrev HezeStoreRun [Preset] [HasherTag] (map : MapKind) : Type → Type :=
   StateT (Store map) (Except StoreTransitionError)
 
-/-- **The FOCIL enforcement theorem.** A verified payload whose recorded inclusion-list
-satisfaction verdict is `false` causes `should_extend_payload` to return exactly `false`,
-with the runner state unchanged (the trailing `store` in the result, not some other
-state): the FOCIL guard is the branch that decides the outcome, and it stops before any
-later logic runs.
+/-- A verified payload with a recorded `false` inclusion-list satisfaction verdict
+is rejected by Heze's FOCIL gate once the preliminary block/slot checks succeed.
+The result preserves the runner state and short-circuits the later inherited Gloas
+logic.
 
-`hVerified` is not logically necessary for the Boolean conclusion: without it,
-an unverified payload is rejected by `shouldExtendPayload` before the FOCIL helper
-is called. It is retained to establish that ordinary payload verification has
-passed, so the recorded unsatisfied verdict is the rejecting branch.
-
-This theorem does not evaluate, and says nothing about, the timeliness vote, the
-data-availability vote, the proposer-boost root, or the parent block; those all sit past
-the gate this theorem's hypotheses stop at. It also assumes the recorded verdict as given,
-`hUnsatisfied` is a hypothesis, not a derived fact, so this theorem does not establish
-that the verdict itself is correct, only that the gate honors it once recorded. -/
+`hVerified` is logically unnecessary for the Boolean conclusion: an unverified
+payload is rejected earlier. It is retained to establish that the FOCIL gate is
+the rejecting branch. The converse is not claimed: `shouldExtendPayload` can also
+return `false` for an unverified payload or because of later Gloas logic. -/
 theorem shouldExtendPayload_run_eq_false_of_recorded_unsatisfied
     {map : MapKind} [Preset] [HasherTag] [Config] [FcMap map]
     (store : Store map) (root : Root) (rootBlock : BeaconBlock)
