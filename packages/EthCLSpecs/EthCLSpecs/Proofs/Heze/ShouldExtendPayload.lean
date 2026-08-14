@@ -9,7 +9,7 @@ in both Gloas and Heze and this module's theorem is about the Heze override alon
 (`EthCLSpecs/Proofs/Gloas/UpdateCheckpoints.lean` documents the same naming reason for
 `updateCheckpoints`).
 
-`[New in Heze:EIP7805]` adds one gate to Gloas's `should_extend_payload`: after the
+Heze's EIP-7805 fork adds one gate to Gloas's `should_extend_payload`: after the
 ordinary `is_payload_verified` check, a payload whose recorded inclusion-list
 satisfaction verdict is `false` is not extended, before any of the later timeliness,
 data-availability, or proposer-boost reads run. This module proves that gate fires:
@@ -53,9 +53,9 @@ fork-choice `Store` and rejecting with `StoreTransitionError`. The Heze-side sib
 `GloasStoreRun` (`Proofs/Gloas/ForkChoiceRun.lean`): a separate abbrev because `Heze.Store` is
 its own `forkstruct`, distinct from `Gloas.Store`, not a renaming of the same type.
 
-Parameterized by the map backing rather than fixed to `treeMap`, for the same reason as
-`GloasStoreRun`: the backing is a separate axis of the fast/pure duality from the
-monad, and a theorem that does not read a map should not pin one. -/
+Parameterized by the map backing rather than fixed to `treeMap`, because the
+runner representation and map backing are independent implementation choices;
+the theorem requires only the abstract `FcMap` interface. -/
 abbrev HezeStoreRun [Preset] [HasherTag] (map : MapKind) : Type → Type :=
   StateT (Store map) (Except StoreTransitionError)
 
@@ -65,14 +65,10 @@ with the runner state unchanged (the trailing `store` in the result, not some ot
 state): the FOCIL guard is the branch that decides the outcome, and it stops before any
 later logic runs.
 
-`hVerified` is not needed to derive the `false` result, `isPayloadInclusionListSatisfied`
-itself returns `false` whenever the payload is unverified (its own `else` branch), so an
-unverified payload already forces `false` before the FOCIL gate is even reached. The
-hypothesis is kept anyway: it fixes which branch is doing the rejecting. Without it, this
-theorem would be equally true of an unverified payload, and would say nothing about the
-inclusion-list gate specifically. With it, the ordinary verification guard is recorded as
-already having passed, so the `false` this theorem proves is the FOCIL gate's rejection,
-not a restatement of the ordinary unverified-payload case Gloas already has.
+`hVerified` is not logically necessary for the Boolean conclusion: without it,
+an unverified payload is rejected by `shouldExtendPayload` before the FOCIL helper
+is called. It is retained to establish that ordinary payload verification has
+passed, so the recorded unsatisfied verdict is the rejecting branch.
 
 This theorem does not evaluate, and says nothing about, the timeliness vote, the
 data-availability vote, the proposer-boost root, or the parent block; those all sit past
