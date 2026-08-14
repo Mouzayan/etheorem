@@ -26,7 +26,7 @@ set_option autoImplicit false
 namespace EthCLSpecs.Proofs.Heze
 
 open EthCLLib.Spec (HasherTag StoreTransitionError MapKind FcMap checkedAdd)
-open EthCLSpecs.Fulu (Preset Config Root Slot)
+open EthCLSpecs.Fulu (Preset Config Root)
 open EthCLSpecs.Heze (Store shouldExtendPayload isPayloadInclusionListSatisfied isPayloadVerified
   getCurrentSlot BeaconBlock)
 
@@ -41,25 +41,31 @@ is rejected by Heze's FOCIL gate once the preliminary block/slot checks succeed.
 The result preserves the runner state and short-circuits the later inherited Gloas
 logic.
 
-`hVerified` is logically unnecessary for the Boolean conclusion: an unverified
+`hverified` is logically unnecessary for the Boolean conclusion: an unverified
 payload is rejected earlier. It is retained to establish that the FOCIL gate is
 the rejecting branch. The converse is not claimed: `shouldExtendPayload` can also
 return `false` for an unverified payload or because of later Gloas logic. -/
 theorem shouldExtendPayload_run_eq_false_of_recorded_unsatisfied
-    {map : MapKind} [Preset] [HasherTag] [Config] [FcMap map]
-    (store : Store map) (root : Root) (rootBlock : BeaconBlock)
-    (hBlock : FcMap.lookup store.blocks root = some rootBlock)
-    (hCurrentSlot :
+    {map : MapKind} [Preset] [HasherTag] [Config] [FcMap map] :
+    ∀ (store : Store map) (root : Root) (rootBlock : BeaconBlock),
+      FcMap.lookup store.blocks root = some rootBlock →
       (getCurrentSlot (StoreTransition := HezeStoreRun map) store).run store
-        = .ok (rootBlock.slot + 1, store))
-    (hNoOverflow : ¬ (rootBlock.slot + 1 < rootBlock.slot))
-    (hVerified : isPayloadVerified store root = true)
-    (hUnsatisfied : FcMap.lookup store.payloadInclusionListSatisfaction root = some false) :
-    (shouldExtendPayload (StoreTransition := HezeStoreRun map) store root).run store
-      = .ok (false, store) := by
+        = .ok (rootBlock.slot + 1, store) →
+      ¬ (rootBlock.slot + 1 < rootBlock.slot) →
+      isPayloadVerified store root = true →
+      FcMap.lookup store.payloadInclusionListSatisfaction root = some false →
+      (shouldExtendPayload (StoreTransition := HezeStoreRun map) store root).run store
+        = .ok (false, store) := by
+  intro store root rootBlock hblock hcurrentslot hnooverflow hverified hunsatisfied
+  -- `checkedAdd` takes its non-overflow branch under `hnooverflow`, so `nextSlot =
+  -- rootBlock.slot + 1`, matching `hcurrentslot` and discharging the slot-equality
+  -- `assert`. `hverified` sends both `isPayloadVerified` checks to their `else`
+  -- branch, and `isPayloadInclusionListSatisfied` then reduces to `hunsatisfied`'s
+  -- recorded `false`, so `shouldExtendPayload`'s inclusion-list guard takes its
+  -- `then` branch, forcing the whole result to `pure false`.
   simp [shouldExtendPayload, isPayloadInclusionListSatisfied, FcMap.getOrThrow,
-    FcMap.getOrThrowKey, FcMap.getOrAssert, hBlock, checkedAdd, hNoOverflow, hVerified,
-    hUnsatisfied, hCurrentSlot, Gloas.GloasRun.except_bind_ok]
+    FcMap.getOrThrowKey, FcMap.getOrAssert, hblock, checkedAdd, hnooverflow, hverified,
+    hunsatisfied, hcurrentslot, Gloas.GloasRun.except_bind_ok]
   rfl
 
 end EthCLSpecs.Proofs.Heze

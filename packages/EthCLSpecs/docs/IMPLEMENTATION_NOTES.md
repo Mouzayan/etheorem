@@ -846,7 +846,7 @@ separation.
   Heze's EIP-7805 FOCIL gate: once the preliminary block/slot
   checks succeed, a verified payload with a recorded `false` inclusion-list
   satisfaction verdict is rejected before the later timeliness,
-  data-availability, and proposer-boost reads run, with the store left
+  data-availability, and proposer-boost logic is evaluated, with the store left
   unchanged. It takes the recorded verdict as a hypothesis rather than
   deriving it, and says nothing about verdict production or the missing-record
   `assert` branch.
