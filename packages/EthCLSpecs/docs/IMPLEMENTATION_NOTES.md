@@ -846,7 +846,7 @@ separation.
 
 - **`Proofs/Heze/ShouldExtendPayload.lean`** places its theorem in
   `EthCLSpecs.Proofs.Heze`, since `shouldExtendPayload` exists in both Gloas
-  and Heze. `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` proves
+  and Heze. `shouldExtendPayload_run_eq_false_of_verified_unsatisfied` proves
   Heze's EIP-7805 FOCIL gate at `ForkChoiceStoreRun (Store map)`: once the
   preliminary block/slot checks succeed, a verified payload with a recorded
   `false` inclusion-list satisfaction verdict is rejected before the later

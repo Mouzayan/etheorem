@@ -42,7 +42,7 @@ logic.
 payload is rejected earlier. It is retained to establish that the FOCIL gate is
 the rejecting branch. The converse is not claimed: `shouldExtendPayload` can also
 return `false` for an unverified payload or because of later Gloas logic. -/
-theorem shouldExtendPayload_run_eq_false_of_recorded_unsatisfied
+theorem shouldExtendPayload_run_eq_false_of_verified_unsatisfied
     {map : MapKind} [Preset] [HasherTag] [Config] [FcMap map] :
     ∀ (store : Store map) (root : Root) (rootBlock : BeaconBlock),
       FcMap.lookup store.blocks root = some rootBlock →
