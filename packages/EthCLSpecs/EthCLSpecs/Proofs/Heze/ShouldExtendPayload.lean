@@ -14,10 +14,14 @@ in the pure fork-choice runner `ForkChoiceStoreRun (Store map)`, leaving its
 runner state unchanged.
 
 The theorem assumes the successful block lookup, current-slot calculation,
-non-overflowing slot increment, and recorded verdict. It does not prove verdict
-production or correctness, the payload/verdict pairing invariant, missing-record
-behavior, inclusion-list construction or validation, or end-to-end canonicality
-and liveness.
+non-overflowing slot increment, and recorded verdict. It needs no
+`[ExecutionEngine]` binder: Heze records the inclusion-list satisfaction verdict
+behind that seam in `recordPayloadInclusionListSatisfaction`, while
+`shouldExtendPayload` only reads the stored result through
+`isPayloadInclusionListSatisfied`. Verdict production and correctness, the
+payload/verdict pairing invariant, missing-record behavior, inclusion-list
+construction or validation, and end-to-end canonicality and liveness stay out of
+scope.
 
 The theorem lives in `EthCLSpecs.Proofs.Heze` because `shouldExtendPayload` exists
 in both Gloas and Heze.
