@@ -838,6 +838,19 @@ separation.
   `EthCLSpecs.Proofs.Gloas`. It characterizes Gloas `processOperations` at
   `GloasRun`; handlers and later failure postconditions remain opaque.
 
+- **`Proofs/Heze/ShouldExtendPayload.lean`** names `HezeStoreRun`, the pure
+  `StateT`/`Except` store monad for Heze (the store-side sibling of
+  `GloasStoreRun` in `Proofs/Gloas/ForkChoiceRun.lean`), and places its theorem in
+  `EthCLSpecs.Proofs.Heze`, since `shouldExtendPayload` exists in both Gloas
+  and Heze. `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` proves
+  Heze's EIP-7805 FOCIL gate: once the preliminary block/slot
+  checks succeed, a verified payload with a recorded `false` inclusion-list
+  satisfaction verdict is rejected before the later timeliness,
+  data-availability, and proposer-boost reads run, with the store left
+  unchanged. It takes the recorded verdict as a hypothesis rather than
+  deriving it, and says nothing about verdict production or the missing-record
+  `assert` branch.
+
 - **`Proofs/Gloas/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
   field moves. On top of it sit unchanged-or-advances characterizations for the
