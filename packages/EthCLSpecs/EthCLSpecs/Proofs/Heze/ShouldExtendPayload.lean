@@ -10,7 +10,8 @@ inserts a FOCIL gate after payload verification and before the later timeliness,
 data-availability, and proposer-boost logic.
 This module proves that, once the common block/slot prefix succeeds, a verified
 payload with a recorded `false` inclusion-list satisfaction verdict returns `false`
-at `ForkChoiceStoreRun (Store map)`, leaving its runner state unchanged.
+in the pure fork-choice runner `ForkChoiceStoreRun (Store map)`, leaving its
+runner state unchanged.
 
 The theorem assumes the successful block lookup, current-slot calculation,
 non-overflowing slot increment, and recorded verdict. It does not prove verdict
