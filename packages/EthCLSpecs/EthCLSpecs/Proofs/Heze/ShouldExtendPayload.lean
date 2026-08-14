@@ -40,14 +40,13 @@ open EthCLSpecs.Heze (Store shouldExtendPayload isPayloadInclusionListSatisfied 
 
 /-- A verified payload with a recorded `false` inclusion-list satisfaction verdict
 is rejected by Heze's FOCIL gate once the preliminary block/slot checks succeed.
-The result preserves the runner state and short-circuits the later inherited Gloas
-logic.
+The result preserves the runner state and short-circuits later logic shared with Gloas.
 
 `hverified` is logically unnecessary for the Boolean conclusion: an unverified
 payload is rejected earlier. It is retained to establish that the FOCIL gate is
 the rejecting branch. The converse is not claimed: `shouldExtendPayload` can also
 return `false` for an unverified payload or because of later Gloas logic. -/
-theorem shouldExtendPayload_run_eq_false_of_verified_unsatisfied
+theorem shouldExtendPayload_run_eq_false_of_recorded_unsatisfied
     {map : MapKind} [Preset] [HasherTag] [Config] [FcMap map] :
     ∀ (store : Store map) (root : Root) (rootBlock : BeaconBlock),
       FcMap.lookup store.blocks root = some rootBlock →

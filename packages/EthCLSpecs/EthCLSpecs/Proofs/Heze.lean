@@ -17,6 +17,6 @@ Re-exports:
 
 * `EthCLSpecs.Proofs.Heze.ShouldExtendPayload`: Heze's verified,
   recorded-unsatisfied FOCIL rejection theorem
-  (`shouldExtendPayload_run_eq_false_of_verified_unsatisfied`), proved with
+  (`shouldExtendPayload_run_eq_false_of_recorded_unsatisfied`), proved with
   `ForkChoiceStoreRun`.
 -/
