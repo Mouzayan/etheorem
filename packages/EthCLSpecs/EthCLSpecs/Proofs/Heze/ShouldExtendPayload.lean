@@ -60,12 +60,7 @@ theorem shouldExtendPayload_run_eq_false_of_verified_unsatisfied
           store
         = .ok (false, store) := by
   intro store root rootBlock hblock hcurrentslot hnooverflow hverified hunsatisfied
-  -- `checkedAdd` takes its non-overflow branch under `hnooverflow`, so `nextSlot =
-  -- rootBlock.slot + 1`, matching `hcurrentslot` and discharging the slot-equality
-  -- `assert`. `hverified` sends both `isPayloadVerified` checks to their `else`
-  -- branch, and `isPayloadInclusionListSatisfied` then reduces to `hunsatisfied`'s
-  -- recorded `false`, so `shouldExtendPayload`'s inclusion-list guard takes its
-  -- `then` branch, forcing the whole result to `pure false`.
+  -- Targeted unfold of the FOCIL gate; residual goal is definitional.
   simp [shouldExtendPayload, isPayloadInclusionListSatisfied, FcMap.getOrThrow,
     FcMap.getOrThrowKey, FcMap.getOrAssert, hblock, checkedAdd, hnooverflow, hverified,
     hunsatisfied, hcurrentslot, Gloas.GloasRun.except_bind_ok]

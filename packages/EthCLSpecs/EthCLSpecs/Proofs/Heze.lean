@@ -15,8 +15,8 @@ Every declaration here sits in the `EthCLSpecs.Proofs.Heze` namespace.
 
 Re-exports:
 
-* `EthCLSpecs.Proofs.Heze.ShouldExtendPayload`: `HezeStoreRun`, the store-side
-  pure monad for Heze, plus the FOCIL enforcement theorem for Heze's
-  `shouldExtendPayload` override
-  (`shouldExtendPayload_run_eq_false_of_verified_unsatisfied`).
+* `EthCLSpecs.Proofs.Heze.ShouldExtendPayload`: Heze's verified,
+  recorded-unsatisfied FOCIL rejection theorem
+  (`shouldExtendPayload_run_eq_false_of_verified_unsatisfied`), proved with
+  `ForkChoiceStoreRun`.
 -/

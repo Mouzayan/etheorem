@@ -847,13 +847,14 @@ separation.
 - **`Proofs/Heze/ShouldExtendPayload.lean`** places its theorem in
   `EthCLSpecs.Proofs.Heze`, since `shouldExtendPayload` exists in both Gloas
   and Heze. `shouldExtendPayload_run_eq_false_of_verified_unsatisfied` proves
-  Heze's EIP-7805 FOCIL gate at `ForkChoiceStoreRun (Store map)`: once the
-  preliminary block/slot checks succeed, a verified payload with a recorded
-  `false` inclusion-list satisfaction verdict is rejected before the later
-  timeliness, data-availability, and proposer-boost logic is evaluated, with
-  the store left unchanged. It takes the recorded verdict as a hypothesis rather
-  than deriving it, and says nothing about verdict production or the
-  missing-record `assert` branch.
+  only this FOCIL-gate claim at `ForkChoiceStoreRun (Store map)`: under
+  successful preliminary lookup/slot checks, a verified payload with a present
+  recorded `false` satisfaction verdict is rejected by the Heze FOCIL gate, with
+  the pure runner state unchanged. It is not complete correctness of
+  `shouldExtendPayload`. The recorded verdict is an assumption, so payload/verdict
+  pairing and exact agreement of the recorded verdict with
+  `isInclusionListSatisfied` remain follow-up candidates in
+  `PROOF_LEDGER.md`.
 
 - **`Proofs/Gloas/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
