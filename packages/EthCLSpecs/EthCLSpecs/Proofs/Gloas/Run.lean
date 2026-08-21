@@ -54,16 +54,6 @@ boxed Gloas `BeaconState` and rejecting with `StateTransitionError`. `abbrev`
 abbrev GloasRun [Preset] [HasherTag] : Type → Type :=
   StateT State (Except StateTransitionError)
 
-/-- Pure runner for fork-choice store proofs: `StateT` over `Except`, threading an
-arbitrary store state `σ` and rejecting with `StoreTransitionError`. The store-side
-counterpart of `GloasRun`, and the store-side reading of `SPECS_ARCHITECTURE.md` §11.1.
-
-Parameterized by the store type rather than a fork-specific `Store`, so Gloas and Heze
-(and any later fork) pin `(StoreTransition := ForkChoiceStoreRun (Store map))` at the same
-shared name. -/
-abbrev ForkChoiceStoreRun (σ : Type) : Type → Type :=
-  StateT σ (Except StoreTransitionError)
-
 /-! ## Running a bind
 
 `EStateM` ships `run_bind` / `run_pure` as `simp` lemmas; the `StateT`-over-`Except`

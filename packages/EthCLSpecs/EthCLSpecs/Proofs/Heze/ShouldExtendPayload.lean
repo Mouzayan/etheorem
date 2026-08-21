@@ -34,9 +34,12 @@ namespace EthCLSpecs.Proofs.Heze
 open EthCLSpecs.Proofs (ForkChoiceStoreRun)
 open EthCLSpecs.Proofs.Gloas (GloasRun)
 open EthCLLib.Spec (HasherTag MapKind FcMap checkedAdd)
-open EthCLSpecs.Fulu (Preset Config Root)
-open EthCLSpecs.Heze (Store shouldExtendPayload isPayloadInclusionListSatisfied isPayloadVerified
-  getCurrentSlot BeaconBlock)
+open EthCLSpecs.Fulu (Root)
+-- `Preset` and `Config` come from Heze, not Fulu: `forkpreset` gives each fork its own
+-- class, and `Heze.Store` is elaborated against Heze's. The downgrade instances run the
+-- other way, so a Fulu binder would not synthesize here.
+open EthCLSpecs.Heze (Preset Config Store shouldExtendPayload isPayloadInclusionListSatisfied
+  isPayloadVerified getCurrentSlot BeaconBlock)
 
 /-- A verified payload with a recorded `false` inclusion-list satisfaction verdict
 is rejected by Heze's FOCIL gate once the preliminary block/slot checks succeed.
