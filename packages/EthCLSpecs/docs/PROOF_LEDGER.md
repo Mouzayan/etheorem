@@ -26,9 +26,13 @@ diff, so the ledger reads as the full list of candidates and the baseline reads
 as the subset that is done.
 
 `in progress` covers a theorem being written and one that is partly landed
-alike. The Property cell then says what is landed and what is open, which is the
-case `getPtc` shows. `out of scope` carries its reason in the Property cell,
-cryptographic assumptions being the standing case.
+alike. A theorem lands partly when it states one branch, one call pattern, or a
+restatement of a helper rather than the whole claim the row asks for. It then
+carries no `@[characterizes]` tag, and the Property cell says what is landed and
+what is open. `getPtc` and `shouldExtendPayload` are the two cases that show it.
+
+`out of scope` carries its reason in the Property cell, cryptographic
+assumptions being the standing case.
 
 ## The Location column
 
