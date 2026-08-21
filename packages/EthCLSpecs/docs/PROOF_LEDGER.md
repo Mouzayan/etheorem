@@ -190,9 +190,9 @@ Properties specific to the fork-choice store and the LMD-GHOST tree: agreement b
 
 | Function | Location | Property | Status | Tracking |
 | --- | --- | --- | --- | --- |
-| `shouldExtendPayload` | `Heze/ForkChoice.lean:320-344` | Under successful preliminary lookup and slot checks, a verified payload with a recorded `false` inclusion-list satisfaction verdict is rejected by the FOCIL gate, with the pure runner state unchanged. This is not complete correctness of `shouldExtendPayload`: the later Gloas accept and reject paths and the missing-record `assert` branch stay out of scope, and the two write-path rows below stay open | proved | #63, `Proofs/Heze/ShouldExtendPayload.lean` |
-| `recordPayloadInclusionListSatisfaction` | `Heze/ForkChoice.lean:406-420` | The value inserted at `root` equals `isInclusionListSatisfied payload ilTxs`. Its `false` corollary discharges the recorded-unsatisfaction hypothesis of `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` | proposed |  |
-| `onExecutionPayloadEnvelope` | `Heze/ForkChoice.lean:426-450` | After a successful envelope acceptance, `payloads[root]` and `payloadInclusionListSatisfaction[root]` are written together for the same `root`, so a verified payload is paired with some recorded satisfaction verdict | proposed |  |
+| `shouldExtendPayload` | `Heze/ForkChoice.lean:320-342` | Under successful preliminary lookup and slot checks, a verified payload with a recorded `false` inclusion-list satisfaction verdict is rejected by the FOCIL gate, with the pure runner state unchanged. This is not complete correctness of `shouldExtendPayload`: the later Gloas accept and reject paths and the missing-record `assert` branch stay out of scope, and the two write-path rows below stay open | in progress | #63, `Proofs/Heze/ShouldExtendPayload.lean` |
+| `recordPayloadInclusionListSatisfaction` | `Heze/ForkChoice.lean:406-418` | The value inserted at `root` equals `isInclusionListSatisfied payload ilTxs`. Its `false` corollary discharges the recorded-unsatisfaction hypothesis of `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` | proposed |  |
+| `onExecutionPayloadEnvelope` | `Heze/ForkChoice.lean:426-448` | After a successful envelope acceptance, `payloads[root]` and `payloadInclusionListSatisfaction[root]` are written together for the same `root`, so a verified payload is paired with some recorded satisfaction verdict | proposed |  |
 
 ---
 
