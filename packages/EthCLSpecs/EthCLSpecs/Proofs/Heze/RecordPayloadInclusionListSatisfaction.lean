@@ -53,6 +53,7 @@ theorem recordPayloadInclusionListSatisfaction_run_eq
               FcMap.insert store.payloadInclusionListSatisfaction root
                 (isInclusionListSatisfied payload ilTxs) }, runnerStore) := by
   intro store runnerStore state root payload ilTxs hslot htxs
+  -- Targeted unfold of the recorder; residual goal is definitional.
   simp [recordPayloadInclusionListSatisfaction, checkedSub, hslot, htxs]
   rfl
 

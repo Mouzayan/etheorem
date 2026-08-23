@@ -850,11 +850,23 @@ separation.
   only this FOCIL-gate claim at `ForkChoiceStoreRun (Store map)`: under
   successful preliminary lookup/slot checks, a verified payload with a present
   recorded `false` satisfaction verdict is rejected by the Heze FOCIL gate, with
-  the pure runner state unchanged. It is not complete correctness of
-  `shouldExtendPayload`. The recorded verdict is an assumption, so payload/verdict
-  pairing and exact agreement of the recorded verdict with
-  `isInclusionListSatisfied` remain follow-up candidates in
+  the pure runner state unchanged. The later Gloas accept and reject paths and
+  the missing-record `assert` branch stay out of scope. The recorded verdict is
+  an assumption. The successful-run write of `isInclusionListSatisfied` is
+  `Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`. Same-root
+  payload/verdict pairing remains on the `onExecutionPayloadEnvelope` row in
   `PROOF_LEDGER.md`.
+
+- **`Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`** places
+  `recordPayloadInclusionListSatisfaction_run_eq` in `EthCLSpecs.Proofs.Heze`.
+  At `ForkChoiceStoreRun (Store map)`, a successful run with nonzero
+  `state.slot` and a successful `getInclusionListTransactions` collection
+  returns the explicit store with `payloadInclusionListSatisfaction` updated
+  by `FcMap.insert` of `isInclusionListSatisfied payload ilTxs` at `root`,
+  and leaves the runner state unchanged. This covers both Boolean verdicts.
+  The slot-0 underflow and the transaction-collection rejects stay outside
+  the claim. Generic `[FcMap map]` has no insert/lookup law, so no lookup
+  corollary is stated.
 
 - **`Proofs/Gloas/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
