@@ -859,10 +859,10 @@ separation.
 
 - **`Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`** places
   `recordPayloadInclusionListSatisfaction_run_eq` in `EthCLSpecs.Proofs.Heze`.
-  At `ForkChoiceStoreRun (Store map)`, with nonzero `state.slot` and under a
-  successful transaction collection that preserves the runner state, the
-  recorder returns the update with that state unchanged. The returned store
-  has `payloadInclusionListSatisfaction` updated by `FcMap.insert` of
+  At `ForkChoiceStoreRun (Store map)`, with nonzero `state.slot` and a
+  successful transaction collection, the recorder returns the update and
+  threads through the runner state that collection produced. The returned
+  store has `payloadInclusionListSatisfaction` updated by `FcMap.insert` of
   `isInclusionListSatisfied payload ilTxs` at `root`. This covers both Boolean
   verdicts.
   The slot-0 underflow and the transaction-collection rejects stay outside

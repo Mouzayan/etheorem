@@ -14,11 +14,11 @@ with the payload and warm block state, at the same root.
 
 `recordPayloadInclusionListSatisfaction_run_eq` is the successful-run frame
 equation at `ForkChoiceStoreRun (Store map)`. Under a successful transaction
-collection that preserves the runner state, the recorder returns the update
-with that state unchanged. Both Boolean verdicts are covered: the inserted
-value is `isInclusionListSatisfied payload ilTxs`. The returned field is that
-`FcMap.insert` at `root`. Generic `[FcMap map]` has no insert/lookup law, so
-no lookup corollary is stated.
+collection, the recorder returns the update and threads through the runner
+state that collection produced. Both Boolean verdicts are covered: the
+inserted value is `isInclusionListSatisfied payload ilTxs`. The returned
+field is that `FcMap.insert` at `root`. Generic `[FcMap map]` has no
+insert/lookup law, so no lookup corollary is stated.
 
 The slot-0 `checkedSub` underflow and transaction-collection failures,
 including the empty-committee and missing-timeliness-key paths, stay
@@ -34,30 +34,34 @@ open EthCLLib.Spec (HasherTag MapKind FcMap checkedSub ExecutionEngine)
 open EthCLSpecs.Heze (Preset Store State Root ExecutionPayload ExecutionRequests Transaction
   recordPayloadInclusionListSatisfaction getInclusionListTransactions isInclusionListSatisfied)
 
-/-- If timely inclusion-list transaction collection succeeds without changing
-the runner state, the recorder returns the explicit store with
-`payloadInclusionListSatisfaction` updated by `FcMap.insert` of
-`isInclusionListSatisfied payload ilTxs` at `root`. The equation covers both
-Boolean verdicts. -/
+/-- If timely inclusion-list transaction collection succeeds, the recorder
+returns the explicit store with `payloadInclusionListSatisfaction` updated by
+`FcMap.insert` of `isInclusionListSatisfied payload ilTxs` at `root`, and
+threads through the runner state that collection produced. The equation
+covers both Boolean verdicts. -/
 @[characterizes EthCLSpecs.Heze.recordPayloadInclusionListSatisfaction]
 theorem recordPayloadInclusionListSatisfaction_run_eq
     {map : MapKind} [Preset] [HasherTag] [FcMap map]
     [ExecutionEngine ExecutionPayload Transaction ExecutionRequests] :
-    ∀ (store runnerStore : Store map) (state : State) (root : Root)
+    ∀ (store runnerStore postRunnerStore : Store map)
+      (state : State) (root : Root)
       (payload : ExecutionPayload) (ilTxs : Array Transaction),
       sszGet state slot ≠ 0 →
-      (getInclusionListTransactions store.inclusionListStore state (sszGet state slot - 1)
-          (onlyTimely := true)
-        : ForkChoiceStoreRun (Store map) (Array Transaction)).run runnerStore
-        = .ok (ilTxs, runnerStore) →
+      (getInclusionListTransactions
+          (StoreTransition := ForkChoiceStoreRun (Store map))
+          store.inclusionListStore state (sszGet state slot - 1)
+          (onlyTimely := true)).run runnerStore
+        = .ok (ilTxs, postRunnerStore) →
       (recordPayloadInclusionListSatisfaction
           (StoreTransition := ForkChoiceStoreRun (Store map))
           store state root payload).run runnerStore
-        = .ok ({ store with
-            payloadInclusionListSatisfaction :=
-              FcMap.insert store.payloadInclusionListSatisfaction root
-                (isInclusionListSatisfied payload ilTxs) }, runnerStore) := by
-  intro store runnerStore state root payload ilTxs hslot htxs
+        = .ok (
+            { store with
+              payloadInclusionListSatisfaction :=
+                FcMap.insert store.payloadInclusionListSatisfaction root
+                  (isInclusionListSatisfied payload ilTxs) },
+            postRunnerStore) := by
+  intro store runnerStore postRunnerStore state root payload ilTxs hslot htxs
   -- Targeted unfold of the recorder; residual goal is definitional.
   simp [recordPayloadInclusionListSatisfaction, checkedSub, hslot, htxs]
   rfl
