@@ -7,16 +7,18 @@ import EthCLSpecs.Proofs.StoreRun
 `recordPayloadInclusionListSatisfaction` (`Heze/ForkChoice.lean:406-418`) is the
 producer side of Heze's FOCIL verdict. It takes an explicit `Store`, records
 whether `payload` satisfies the inclusion-list transactions selected for
-`state.slot - 1`, stores that verdict under `root`, and returns the updated
-`Store` as the monadic value. The runner state is left unchanged.
+`state.slot - 1`, and returns a store whose `payloadInclusionListSatisfaction`
+field is obtained by `FcMap.insert` of that verdict at `root`.
 `onExecutionPayloadEnvelope` later installs that returned store, together
 with the payload and warm block state, at the same root.
 
 `recordPayloadInclusionListSatisfaction_run_eq` is the successful-run frame
-equation at `ForkChoiceStoreRun (Store map)`. Both Boolean verdicts are
-covered: the inserted value is `isInclusionListSatisfied payload ilTxs`. The
-returned field is that `FcMap.insert` at `root`. Generic `[FcMap map]` has no
-insert/lookup law, so no lookup corollary is stated.
+equation at `ForkChoiceStoreRun (Store map)`. Under a successful transaction
+collection that preserves the runner state, the recorder returns the update
+with that state unchanged. Both Boolean verdicts are covered: the inserted
+value is `isInclusionListSatisfied payload ilTxs`. The returned field is that
+`FcMap.insert` at `root`. Generic `[FcMap map]` has no insert/lookup law, so
+no lookup corollary is stated.
 
 The slot-0 `checkedSub` underflow and the `getInclusionListTransactions`
 failures (empty committee, missing timeliness key) stay outside the claim.
@@ -31,10 +33,10 @@ open EthCLLib.Spec (HasherTag MapKind FcMap checkedSub ExecutionEngine)
 open EthCLSpecs.Heze (Preset Store State Root ExecutionPayload ExecutionRequests Transaction
   recordPayloadInclusionListSatisfaction getInclusionListTransactions isInclusionListSatisfied)
 
-/-- Successful run of `recordPayloadInclusionListSatisfaction`: the explicit
-store gains `FcMap.insert` of `isInclusionListSatisfied payload ilTxs` at
-`root`, and the runner state is `runnerStore`. Both Boolean verdicts are this
-same write. -/
+/-- Under a successful transaction collection that preserves the runner
+state, the recorder returns the update with that state unchanged. The
+explicit store gains `FcMap.insert` of `isInclusionListSatisfied payload ilTxs`
+at `root`. Both Boolean verdicts are this same write. -/
 @[characterizes EthCLSpecs.Heze.recordPayloadInclusionListSatisfaction]
 theorem recordPayloadInclusionListSatisfaction_run_eq
     {map : MapKind} [Preset] [HasherTag] [FcMap map]
@@ -43,6 +45,7 @@ theorem recordPayloadInclusionListSatisfaction_run_eq
       (payload : ExecutionPayload) (ilTxs : Array Transaction),
       sszGet state slot ≠ 0 →
       (getInclusionListTransactions store.inclusionListStore state (sszGet state slot - 1)
+          (onlyTimely := true)
         : ForkChoiceStoreRun (Store map) (Array Transaction)).run runnerStore
         = .ok (ilTxs, runnerStore) →
       (recordPayloadInclusionListSatisfaction
