@@ -20,8 +20,9 @@ value is `isInclusionListSatisfied payload ilTxs`. The returned field is that
 `FcMap.insert` at `root`. Generic `[FcMap map]` has no insert/lookup law, so
 no lookup corollary is stated.
 
-The slot-0 `checkedSub` underflow and the `getInclusionListTransactions`
-failures (empty committee, missing timeliness key) stay outside the claim.
+The slot-0 `checkedSub` underflow and transaction-collection failures,
+including the empty-committee and missing-timeliness-key paths, stay
+outside the claim.
 -/
 
 set_option autoImplicit false
@@ -33,10 +34,11 @@ open EthCLLib.Spec (HasherTag MapKind FcMap checkedSub ExecutionEngine)
 open EthCLSpecs.Heze (Preset Store State Root ExecutionPayload ExecutionRequests Transaction
   recordPayloadInclusionListSatisfaction getInclusionListTransactions isInclusionListSatisfied)
 
-/-- Under a successful transaction collection that preserves the runner
-state, the recorder returns the update with that state unchanged. The
-explicit store gains `FcMap.insert` of `isInclusionListSatisfied payload ilTxs`
-at `root`. Both Boolean verdicts are this same write. -/
+/-- If timely inclusion-list transaction collection succeeds without changing
+the runner state, the recorder returns the explicit store with
+`payloadInclusionListSatisfaction` updated by `FcMap.insert` of
+`isInclusionListSatisfied payload ilTxs` at `root`. The equation covers both
+Boolean verdicts. -/
 @[characterizes EthCLSpecs.Heze.recordPayloadInclusionListSatisfaction]
 theorem recordPayloadInclusionListSatisfaction_run_eq
     {map : MapKind} [Preset] [HasherTag] [FcMap map]
