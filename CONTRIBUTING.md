@@ -167,8 +167,9 @@ about `Heze.f`, and the per-fork directory is what keeps the two claims apart.
    `in progress`.
 
    A partly landed row then says in its Property cell what is landed and what is
-   open, so the next author reads the remainder off the row. `getPtc` and
-   `shouldExtendPayload` are the two worked cases.
+   open, so the next author reads the remainder off the row. `getPtc`,
+   `shouldExtendPayload`, and `recordPayloadInclusionListSatisfaction` are the
+   worked cases.
 
    `just proof-coverage` cross-checks the status against the tags. It warns when
    a `proved` row carries no tag, and when a tagged function has no `proved`

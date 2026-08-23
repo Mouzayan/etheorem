@@ -866,8 +866,9 @@ separation.
   `isInclusionListSatisfied payload ilTxs` at `root`. This covers both Boolean
   verdicts.
   The slot-0 underflow and the transaction-collection rejects stay outside
-  the claim. Generic `[FcMap map]` has no insert/lookup law, so no lookup
-  corollary is stated.
+  the claim, so the theorem carries no `characterizes` tag and the ledger
+  row stays in progress. Generic `[FcMap map]` has no insert/lookup law,
+  so no lookup corollary is stated.
 
 - **`Proofs/Gloas/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store

@@ -22,7 +22,8 @@ insert/lookup law, so no lookup corollary is stated.
 
 The slot-0 `checkedSub` underflow and transaction-collection failures,
 including the empty-committee and missing-timeliness-key paths, stay
-outside the claim.
+outside the claim. A complete result covering those branches is what
+would carry a `characterizes` tag.
 -/
 
 set_option autoImplicit false
@@ -39,7 +40,6 @@ returns the explicit store with `payloadInclusionListSatisfaction` updated by
 `FcMap.insert` of `isInclusionListSatisfied payload ilTxs` at `root`, and
 threads through the runner state that collection produced. The equation
 covers both Boolean verdicts. -/
-@[characterizes EthCLSpecs.Heze.recordPayloadInclusionListSatisfaction]
 theorem recordPayloadInclusionListSatisfaction_run_eq
     {map : MapKind} [Preset] [HasherTag] [FcMap map]
     [ExecutionEngine ExecutionPayload Transaction ExecutionRequests] :
