@@ -6,10 +6,8 @@ import EthCLSpecs.Proofs.StoreRun
 
 `recordPayloadInclusionListSatisfaction` (`Heze/ForkChoice.lean:406-418`) is the
 producer side of Heze's FOCIL satisfaction result. It takes an explicit
-`Store`, records whether `payload` satisfies the inclusion-list transactions
-selected for `state.slot - 1`, and returns a store whose
-`payloadInclusionListSatisfaction` field is obtained by `FcMap.insert` of
-that satisfaction result at `root`.
+`Store`, computes `isInclusionListSatisfied payload ilTxs` and inserts that
+result at `root`.
 `onExecutionPayloadEnvelope` later installs that returned store, together
 with the payload and warm block state, at the same root.
 
@@ -24,8 +22,9 @@ insert/lookup law, so no lookup corollary is stated.
 
 The slot-0 `checkedSub` underflow and transaction-collection failures,
 including the empty-committee and missing-timeliness-key paths, stay
-outside the claim. A complete result covering those branches is what
-would carry a `characterizes` tag.
+outside the claim. Accordingly, this successful-path theorem is not tagged
+`characterizes`; a complete characterization would also account for those
+branches.
 -/
 
 set_option autoImplicit false
