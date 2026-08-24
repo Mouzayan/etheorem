@@ -845,30 +845,33 @@ separation.
   `GloasRun`; handlers and later failure postconditions remain opaque.
 
 - **`Proofs/Heze/ShouldExtendPayload.lean`** places its theorem in
-  `EthCLSpecs.Proofs.Heze`, since `shouldExtendPayload` exists in both Gloas
+  `EthCLSpecs.Proofs.Heze` because `shouldExtendPayload` exists in both Gloas
   and Heze. `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` proves
-  only this FOCIL-gate claim at `ForkChoiceStoreRun (Store map)`: under
-  successful preliminary lookup/slot checks, a verified payload with a present
-  recorded `false` satisfaction verdict is rejected by the Heze FOCIL gate, with
-  the pure runner state unchanged. The later Gloas accept and reject paths and
-  the missing-record `assert` branch stay out of scope. The recorded verdict is
-  an assumption. The successful-run write of `isInclusionListSatisfied` is
-  `Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`. Same-root
-  payload/verdict pairing remains on the `onExecutionPayloadEnvelope` row in
-  `PROOF_LEDGER.md`.
+  the FOCIL rejection case at `ForkChoiceStoreRun (Store map)`. If the initial
+  block lookup and slot checks succeed, Heze rejects a verified payload when
+  the queried root has a recorded `false` inclusion-list satisfaction result.
+  The runner state remains unchanged. The theorem does not cover the later
+  fork-choice checks inherited from Gloas or the case where no result has been
+  recorded. It assumes that the recorded result is present and does not prove
+  that it belongs to the matching payload. The successful path that records
+  the result of `isInclusionListSatisfied` is proved in
+  `Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`. Ensuring that the
+  payload and its result are recorded under the same root remains tracked by
+  the `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
 
-- **`Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`** places
-  `recordPayloadInclusionListSatisfaction_run_eq` in `EthCLSpecs.Proofs.Heze`.
-  At `ForkChoiceStoreRun (Store map)`, with nonzero `state.slot` and a
-  successful transaction collection, the recorder returns the update and
-  threads through the runner state that collection produced. The returned
-  store has `payloadInclusionListSatisfaction` updated by `FcMap.insert` of
-  `isInclusionListSatisfied payload ilTxs` at `root`. This covers both Boolean
-  verdicts.
-  The slot-0 underflow and the transaction-collection rejects stay outside
-  the claim, so the theorem carries no `characterizes` tag and the ledger
-  row stays in progress. Generic `[FcMap map]` has no insert/lookup law,
-  so no lookup corollary is stated.
+- **`Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`** proves
+  `recordPayloadInclusionListSatisfaction_run_eq` in
+  `EthCLSpecs.Proofs.Heze`. The theorem describes the successful case. When
+  `state.slot` is nonzero and transaction collection succeeds, the recorder
+  returns `store` with `payloadInclusionListSatisfaction[root]` set to
+  `isInclusionListSatisfied payload ilTxs`. It leaves the runner state at the
+  state produced by transaction collection. This applies whether the recorded
+  result is `true` or `false`. The theorem does not cover slot zero or
+  transaction-collection failures, so the ledger entry remains in progress
+  and the theorem is not marked `characterizes`. The generic `FcMap` interface
+  does not specify how insert affects a later lookup. The theorem therefore
+  proves the exact insertion but does not state what a subsequent lookup
+  returns.
 
 - **`Proofs/Gloas/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
