@@ -2,29 +2,35 @@ import EthCLSpecs.Heze.ForkChoice
 import EthCLSpecs.Proofs.StoreRun
 
 /-!
-# `EthCLSpecs.Proofs.Heze.RecordPayloadInclusionListSatisfaction`: Heze's FOCIL satisfaction-result write
+# Recording a payload's inclusion-list result
 
-`recordPayloadInclusionListSatisfaction` (`Heze/ForkChoice.lean:406-418`) is the
-producer side of Heze's FOCIL satisfaction result. It takes an explicit
-`Store`, computes `isInclusionListSatisfied payload ilTxs` and inserts that
-result at `root`.
-`onExecutionPayloadEnvelope` later installs that returned store, together
-with the payload and warm block state, at the same root.
+Heze records whether an execution payload contains the transactions required by
+FOCIL. `recordPayloadInclusionListSatisfaction`:
 
-`recordPayloadInclusionListSatisfaction_run_eq` is the successful-run frame
-equation at `ForkChoiceStoreRun (Store map)`. Under a successful transaction
-collection, the recorder preserves the state returned by that collection
-and returns the update with the collection's resulting runner state
-unchanged by the recorder. Both Boolean results are covered: the
-inserted value is `isInclusionListSatisfied payload ilTxs`. The returned
-field is that `FcMap.insert` at `root`. Generic `[FcMap map]` has no
-insert/lookup law, so no lookup corollary is stated.
+1. collects the timely inclusion-list transactions for the previous slot;
+2. checks whether the payload satisfies that list; and
+3. records the resulting Boolean at the payload's block root.
 
-The slot-0 `checkedSub` underflow and transaction-collection failures,
-including the empty-committee and missing-timeliness-key paths, stay
-outside the claim. Accordingly, this successful-path theorem is not tagged
-`characterizes`; a complete characterization would also account for those
-branches.
+This module proves what the function returns when transaction collection
+succeeds.
+
+There are two stores in the theorem:
+
+- `store` is the explicit argument that the function updates and returns;
+- `runnerStore` is the internal runner state used while the function runs.
+
+If transaction collection changes the runner state from `runnerStore` to
+`postRunnerStore`, the recorder preserves `postRunnerStore` without making any
+further changes to it. Separately, it returns `store` with
+`payloadInclusionListSatisfaction[root]` updated to
+`isInclusionListSatisfied payload ilTxs`.
+
+The theorem covers both possible results of the satisfaction check. It does not
+cover slot zero or transaction-collection failures.
+
+The theorem does not prove that a subsequent lookup returns the recorded
+value, because the generic `FcMap` interface does not provide an insert/lookup
+law.
 -/
 
 set_option autoImplicit false
@@ -36,11 +42,18 @@ open EthCLLib.Spec (HasherTag MapKind FcMap checkedSub ExecutionEngine)
 open EthCLSpecs.Heze (Preset Store State Root ExecutionPayload ExecutionRequests Transaction
   recordPayloadInclusionListSatisfaction getInclusionListTransactions isInclusionListSatisfied)
 
-/-- If timely inclusion-list transaction collection succeeds, the recorder
-returns the explicit store with `payloadInclusionListSatisfaction` updated by
-`FcMap.insert` of `isInclusionListSatisfied payload ilTxs` at `root`, and
-threads through the runner state that collection produced. The equation
-covers both Boolean results. -/
+/--
+Suppose the state's slot is nonzero and collecting the timely inclusion-list
+transactions succeeds, returning `ilTxs` and runner state `postRunnerStore`.
+
+Then `recordPayloadInclusionListSatisfaction`:
+
+- returns `store` with the result of
+  `isInclusionListSatisfied payload ilTxs` recorded at `root`; and
+- leaves the runner state at `postRunnerStore`.
+
+No assumption is made about whether the recorded result is `true` or `false`.
+-/
 theorem recordPayloadInclusionListSatisfaction_run_eq
     {map : MapKind} [Preset] [HasherTag] [FcMap map]
     [ExecutionEngine ExecutionPayload Transaction ExecutionRequests] :
@@ -63,7 +76,7 @@ theorem recordPayloadInclusionListSatisfaction_run_eq
                   (isInclusionListSatisfied payload ilTxs) },
             postRunnerStore) := by
   intro store runnerStore postRunnerStore state root payload ilTxs hslot htxs
-  -- Targeted unfold of the recorder; residual goal is definitional.
+  -- Expand the recorder and use the successful slot and transaction-collection hypotheses.
   simp [recordPayloadInclusionListSatisfaction, checkedSub, hslot, htxs]
   rfl
 
