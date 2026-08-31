@@ -861,17 +861,15 @@ separation.
 
 - **`Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`** proves
   `recordPayloadInclusionListSatisfaction_run_eq` in
-  `EthCLSpecs.Proofs.Heze`. The theorem describes the successful case. When
-  `state.slot` is nonzero and transaction collection succeeds, the recorder
-  returns `store` with `payloadInclusionListSatisfaction[root]` set to
-  `isInclusionListSatisfied payload ilTxs`. It leaves the runner state at the
-  state produced by transaction collection. This applies whether the recorded
-  result is `true` or `false`. The theorem does not cover slot zero or
-  transaction-collection failures, so the ledger entry remains in progress
-  and the theorem is not marked `characterizes`. The generic `FcMap` interface
-  does not specify how insert affects a later lookup. The theorem therefore
-  proves the exact insertion but does not state what a subsequent lookup
-  returns.
+  `EthCLSpecs.Proofs.Heze`. When `state.slot` is nonzero and timely
+  transaction collection for the previous slot succeeds (the default
+  `onlyTimely := true`), the recorder returns `store` with
+  `payloadInclusionListSatisfaction[root]` set to
+  `isInclusionListSatisfied payload ilTxs`. It leaves the runner state exactly
+  as transaction collection returned it. The recorded result may be either
+  `true` or `false`. The theorem does not cover slot zero or
+  transaction-collection failures. What a subsequent lookup returns remains
+  tracked by the `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
 
 - **`Proofs/Gloas/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
