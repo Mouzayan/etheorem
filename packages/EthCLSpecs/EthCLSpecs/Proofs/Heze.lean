@@ -1,4 +1,5 @@
 import EthCLSpecs.Proofs.Heze.GetInclusionListTransactions
+import EthCLSpecs.Proofs.Heze.IsPayloadInclusionListSatisfied
 import EthCLSpecs.Proofs.Heze.RecordPayloadInclusionListSatisfaction
 import EthCLSpecs.Proofs.Heze.OnExecutionPayloadEnvelope
 import EthCLSpecs.Proofs.Heze.ShouldExtendPayload
@@ -23,6 +24,11 @@ Re-exports:
   `getInclusionListTransactions`
   (`getInclusionListCommittee_run_eq`, `getInclusionListTransactions_run_eq`),
   plus the missing-timeliness predicate on the `FcMap.fold` entries array.
+* `EthCLSpecs.Proofs.Heze.IsPayloadInclusionListSatisfied`: the complete
+  `.run` equation of `isPayloadInclusionListSatisfied`
+  (`isPayloadInclusionListSatisfied_run`), and the four read corollaries
+  for a missing record, an unverified recorded value, a recorded `false`,
+  and a recorded `true` with a verified payload.
 * `EthCLSpecs.Proofs.Heze.RecordPayloadInclusionListSatisfaction`: the
   complete run of `recordPayloadInclusionListSatisfaction`
   (`recordPayloadInclusionListSatisfaction_run`), proved with
