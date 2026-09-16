@@ -41,7 +41,6 @@ that write with this read, are later handler postconditions.
 -/
 
 set_option autoImplicit false
-set_option maxHeartbeats 800000
 
 namespace EthCLSpecs.Proofs.Heze
 
@@ -54,9 +53,6 @@ open EthCLSpecs.Heze (Preset Config Store shouldExtendPayload isPayloadInclusion
   fcZeroRoot Root Slot BeaconBlock)
 
 /-! ## Complete `.run` equation -/
-
-section
-set_option linter.unusedSimpArgs false
 
 /-- Complete compositional `.run` equation of `shouldExtendPayload` at
 `ForkChoiceStoreRun (Store map)`. The right-hand side is the evaluation
@@ -138,9 +134,9 @@ theorem shouldExtendPayload_run
         by_cases hslot : rootBlock.slot + 1 = currentSlot
         · simp [hslot]
           cases hverified : isPayloadVerified store root
-          · simp [hverified]
+          · simp
             rfl
-          · simp [hverified]
+          · simp
             cases hfocil : (isPayloadInclusionListSatisfied
                 (StoreTransition := ForkChoiceStoreRun (Store map))
                 store root).run s1 with
@@ -173,7 +169,7 @@ theorem shouldExtendPayload_run
                           ∨ store.proposerBoostRoot = fcZeroRoot
                     · simp [hacc]
                       rfl
-                    · simp [hacc, FcMap.getOrThrow, FcMap.getOrThrowKey]
+                    · simp [hacc]
                       cases hpb : FcMap.lookup store.blocks store.proposerBoostRoot with
                       | none =>
                         simp [run_throw, except_bind_error]
@@ -184,8 +180,6 @@ theorem shouldExtendPayload_run
                         · simp [hparent]
                           rfl
         · simp [hslot, run_throw, except_bind_error, SpecReject.assert]
-
-end
 
 /-! ## Prefix rejects -/
 
