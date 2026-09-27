@@ -1,5 +1,6 @@
 import EthCLSpecs.Heze.ForkChoice
 import EthCLSpecs.Proofs.Heze.RecordPayloadInclusionListSatisfaction
+import EthCLSpecs.Proofs.Run
 import EthCLSpecs.Proofs.StoreRun
 
 /-!
@@ -30,7 +31,7 @@ set_option autoImplicit false
 
 namespace EthCLSpecs.Proofs.Heze
 
-open EthCLSpecs.Proofs (ForkChoiceStoreRun)
+open EthCLSpecs.Proofs (ForkChoiceStoreRun run_throw except_bind_error)
 open EthCLLib.Spec (HasherTag MapKind FcMap ExecutionEngine DataAvailability CryptoBackend
   StoreTransitionError)
 open EthCLSpecs.Heze (Preset Config Store State ExecutionPayload ExecutionRequests
@@ -93,7 +94,7 @@ theorem onExecutionPayloadEnvelope_run
     · simp [hda]
       cases hverif : verifyExecutionPayloadEnvelope state signedEnv with
       | error e =>
-        exact ForkChoiceStoreRun.run_throw e store
+        exact run_throw e store
       | ok warm =>
         simp
         cases hrec : (recordPayloadInclusionListSatisfaction
@@ -105,7 +106,7 @@ theorem onExecutionPayloadEnvelope_run
         | ok p =>
           obtain ⟨recordedStore, _⟩ := p
           rfl
-    · simp [hda, ForkChoiceStoreRun.run_throw, ForkChoiceStoreRun.except_bind_error]
+    · simp [hda, run_throw, except_bind_error]
       rfl
 
 /-- Missing `blockStates` entry is the handler's first `.assert` error. -/
