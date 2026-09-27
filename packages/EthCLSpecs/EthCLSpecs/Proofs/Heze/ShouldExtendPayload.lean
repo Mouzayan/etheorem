@@ -34,8 +34,7 @@ set_option autoImplicit false
 
 namespace EthCLSpecs.Proofs.Heze
 
-open EthCLSpecs.Proofs (ForkChoiceStoreRun run_bind run_pure run_throw except_bind_ok
-  except_bind_error)
+open EthCLSpecs.Proofs (ForkChoiceStoreRun run_throw except_bind_ok except_bind_error)
 open EthCLLib.Spec (HasherTag MapKind FcMap checkedAdd throwArithmetic StoreTransitionError
   SpecReject)
 open EthCLSpecs.Heze (Preset Config Store shouldExtendPayload isPayloadInclusionListSatisfied
@@ -111,13 +110,13 @@ theorem shouldExtendPayload_run :
         (StoreTransition := ForkChoiceStoreRun (Store map))
         store).run runnerStore with
     | error err =>
-      simp [run_bind, hcur, except_bind_error]
+      simp [hcur, except_bind_error]
     | ok p =>
       obtain ⟨currentSlot, s1⟩ := p
-      simp [run_bind, hcur, except_bind_ok]
+      simp [hcur, except_bind_ok]
       by_cases hover : rootBlock.slot + 1 < rootBlock.slot
       · simp [hover, ForkChoiceStoreRun.throwArithmetic_run, except_bind_error]
-      · simp [hover, run_pure, except_bind_ok]
+      · simp [hover]
         by_cases hslot : rootBlock.slot + 1 = currentSlot
         · simp [hslot]
           cases hverified : isPayloadVerified store root
@@ -128,10 +127,10 @@ theorem shouldExtendPayload_run :
                 (StoreTransition := ForkChoiceStoreRun (Store map))
                 store root).run s1 with
             | error err =>
-              simp [hfocil, except_bind_error]
+              simp [except_bind_error]
             | ok q =>
               obtain ⟨satisfied, s2⟩ := q
-              simp [hfocil, except_bind_ok]
+              simp [except_bind_ok]
               cases satisfied
               · rfl
               · simp
@@ -139,18 +138,18 @@ theorem shouldExtendPayload_run :
                     (StoreTransition := ForkChoiceStoreRun (Store map))
                     store root true).run s2 with
                 | error err =>
-                  simp [htime, except_bind_error]
+                  simp [except_bind_error]
                 | ok r =>
                   obtain ⟨payloadIsTimely, s3⟩ := r
-                  simp [htime, except_bind_ok]
+                  simp [except_bind_ok]
                   cases hda : (payloadDataAvailability
                       (StoreTransition := ForkChoiceStoreRun (Store map))
                       store root true).run s3 with
                   | error err =>
-                    simp [hda, except_bind_error]
+                    simp [except_bind_error]
                   | ok s =>
                     obtain ⟨payloadDataIsAvailable, s4⟩ := s
-                    simp [hda, except_bind_ok]
+                    simp [except_bind_ok]
                     by_cases hacc :
                         payloadIsTimely = true ∧ payloadDataIsAvailable = true
                           ∨ store.proposerBoostRoot = fcZeroRoot
@@ -161,7 +160,7 @@ theorem shouldExtendPayload_run :
                       | none =>
                         simp [run_throw, except_bind_error]
                       | some pb =>
-                        simp [hpb, except_bind_ok]
+                        simp
                         by_cases hparent : pb.parentRoot = root
                         · simp [hparent]
                         · simp [hparent]
