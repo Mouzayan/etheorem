@@ -866,9 +866,14 @@ separation.
   recorded. It assumes that the recorded result is present and does not prove
   that it belongs to the matching payload. The successful path that records
   the result of `isInclusionListSatisfied` is proved in
-  `Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`. Ensuring that the
-  payload and its result are recorded under the same root remains tracked by
-  the `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
+  `Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`. The successful
+  handler path that writes `blockStates`, `payloads`, and
+  `payloadInclusionListSatisfaction` at the same
+  `signedEnv.message.beaconBlockRoot` is proved in
+  `Proofs/Heze/OnExecutionPayloadEnvelope.lean`. Looking up that recorded
+  result, including a later `false` used by
+  `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied`, remains tracked
+  by the `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
 
 - **`Proofs/Heze/GetInclusionListTransactions.lean`** proves the collector
   run equations used by the recorder characterization.
@@ -903,9 +908,16 @@ separation.
   follow from `Proofs/Heze/GetInclusionListTransactions.lean`.
   `recordPayloadInclusionListSatisfaction_run_eq` restates the successful
   branch with an arbitrary `postRunnerStore`. The generic `FcMap`
-  interface does not specify how insert affects a later lookup. What a
-  subsequent lookup returns remains tracked by the
-  `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
+  interface does not specify how insert affects a later lookup.
+
+- **`Proofs/Heze/OnExecutionPayloadEnvelope.lean`** proves the successful-run
+  equation for Heze's `onExecutionPayloadEnvelope` at
+  `ForkChoiceStoreRun (Store map)`. After the block-state lookup,
+  data-availability check, payload verification, and timely inclusion-list
+  collection succeed, the handler inserts the warm state, envelope, and
+  inclusion-list result at the same beacon-block root. See the
+  `onExecutionPayloadEnvelope` row in `PROOF_LEDGER.md` for the remaining
+  obligations.
 
 - **`Proofs/Gloas/UpdateCheckpoints.lean`** rewrites Gloas's `updateCheckpoints` as a
   single record update, which doubles as the frame condition that no other Store
