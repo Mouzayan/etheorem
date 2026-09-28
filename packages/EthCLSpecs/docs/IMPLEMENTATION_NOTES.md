@@ -911,7 +911,7 @@ separation.
   interface does not specify how insert affects a later lookup.
 
 - **`Proofs/Heze/OnExecutionPayloadEnvelope.lean`** proves the successful-run
-  equation for Heze’s `onExecutionPayloadEnvelope` at
+  equation for Heze's `onExecutionPayloadEnvelope` at
   `ForkChoiceStoreRun (Store map)`. After the block-state lookup,
   data-availability check, payload verification, and timely inclusion-list
   collection succeed, the handler inserts the warm state, envelope, and
