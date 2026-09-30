@@ -19,6 +19,12 @@ The explicit argument `store` is the map that is read. `runnerStore` is
 the runner state. Successful binds thread intermediate states `s1`, `s2`,
 `s3`, and `s4`. A reject returns the error alone and has no post-state.
 
+Private bridges stage the equation so each corollary states only its own
+case. `shouldExtendPayload_run_eq_of_slot_prefix` reduces the successful
+block-and-slot prefix to the post-prefix form. The recorded-satisfied and
+`isParentNodeFull` bridges continue the ladder into the inherited Gloas
+tail.
+
 `isPayloadInclusionListSatisfied` looks up the satisfaction record, then
 reads `isPayloadVerified`. `shouldExtendPayload` tests `isPayloadVerified`
 before it calls that helper. An unverified payload therefore returns `false`
@@ -167,6 +173,69 @@ theorem shouldExtendPayload_run :
                           rfl
         · simp [hslot, run_throw, except_bind_error, SpecReject.assert]
 
+/-! ## The successful prefix
+
+The block lookup, `getCurrentSlot`, the increment, and the slot assertion
+are the prefix every post-prefix corollary shares. One bridge reduces that
+prefix once, and each corollary states only its own case.
+-/
+
+/-- Under the successful prefix (block lookup, `getCurrentSlot`, the
+non-overflowing increment, the slot assertion) the run reduces to the
+post-prefix form: the `isPayloadVerified` branch, the FOCIL read bound at
+`s1`, then the inherited Gloas tail. The gate and tail corollaries below
+derive from this bridge, as does later composition work on the write
+side. -/
+private theorem shouldExtendPayload_run_eq_of_slot_prefix :
+    ∀ (store runnerStore s1 : Store map) (root : Root) (rootBlock : BeaconBlock)
+      (currentSlot : Slot),
+      FcMap.lookup store.blocks root = some rootBlock →
+      (getCurrentSlot
+          (StoreTransition := ForkChoiceStoreRun (Store map))
+          store).run runnerStore
+        = .ok (currentSlot, s1) →
+      ¬ (rootBlock.slot + 1 < rootBlock.slot) →
+      rootBlock.slot + 1 = currentSlot →
+      (shouldExtendPayload
+          (StoreTransition := ForkChoiceStoreRun (Store map))
+          store root).run runnerStore =
+        if !isPayloadVerified store root then
+          .ok (false, s1)
+        else
+          match (isPayloadInclusionListSatisfied
+              (StoreTransition := ForkChoiceStoreRun (Store map))
+              store root).run s1 with
+          | .error err => .error err
+          | .ok (false, s2) => .ok (false, s2)
+          | .ok (true, s2) =>
+            match (payloadTimeliness
+                (StoreTransition := ForkChoiceStoreRun (Store map))
+                store root true).run s2 with
+            | .error err => .error err
+            | .ok (payloadIsTimely, s3) =>
+              match (payloadDataAvailability
+                  (StoreTransition := ForkChoiceStoreRun (Store map))
+                  store root true).run s3 with
+              | .error err => .error err
+              | .ok (payloadDataIsAvailable, s4) =>
+                if (payloadIsTimely && payloadDataIsAvailable)
+                    || store.proposerBoostRoot == fcZeroRoot then
+                  .ok (true, s4)
+                else
+                  match FcMap.lookup store.blocks store.proposerBoostRoot with
+                  | none => .error (.missingKey store.proposerBoostRoot)
+                  | some pb =>
+                    if pb.parentRoot != root then .ok (true, s4)
+                    else
+                      (isParentNodeFull
+                          (StoreTransition := ForkChoiceStoreRun (Store map))
+                          store pb).run s4 := by
+  intro store runnerStore s1 root rootBlock currentSlot
+    hblock hcur hnooverflow hslot
+  rw [shouldExtendPayload_run]
+  simp [hblock, hcur, hnooverflow]
+  simp [hslot]
+
 /-! ## Prefix rejects -/
 
 /-- A missing `store.blocks[root]` entry is `missingKey`. -/
@@ -258,9 +327,9 @@ theorem shouldExtendPayload_run_eq_false_of_unverified :
           store root).run runnerStore
         = .ok (false, s1) := by
   intro store runnerStore s1 root rootBlock currentSlot hblock hcur hnooverflow hslot hverified
-  rw [shouldExtendPayload_run]
-  simp [hblock, hcur, hnooverflow]
-  simp [hslot, hverified]
+  rw [shouldExtendPayload_run_eq_of_slot_prefix store runnerStore s1 root rootBlock
+    currentSlot hblock hcur hnooverflow hslot]
+  simp [hverified]
 
 /-- A missing satisfaction record, after verification, is the helper's
 membership assert. -/
@@ -282,9 +351,9 @@ theorem shouldExtendPayload_run_error_of_missing_focil_record :
         = .error (.assert "root in store.payload_inclusion_list_satisfaction") := by
   intro store runnerStore s1 root rootBlock currentSlot
     hblock hcur hnooverflow hslot hverified hlookup
-  rw [shouldExtendPayload_run]
-  simp [hblock, hcur, hnooverflow]
-  simp [hslot, hverified]
+  rw [shouldExtendPayload_run_eq_of_slot_prefix store runnerStore s1 root rootBlock
+    currentSlot hblock hcur hnooverflow hslot]
+  simp [hverified]
   rw [isPayloadInclusionListSatisfied_run_error_of_missing_record store s1 root hlookup]
 
 /-- A verified payload with a recorded `false` inclusion-list satisfaction
@@ -302,8 +371,9 @@ theorem shouldExtendPayload_run_eq_false_of_recorded_unsatisfied :
           store
         = .ok (false, store) := by
   intro store root rootBlock hblock hcurrentslot hnooverflow hverified hunsatisfied
-  rw [shouldExtendPayload_run]
-  simp [hblock, hcurrentslot, hnooverflow, hverified]
+  rw [shouldExtendPayload_run_eq_of_slot_prefix store store store root rootBlock
+    (rootBlock.slot + 1) hblock hcurrentslot hnooverflow rfl]
+  simp [hverified]
   rw [isPayloadInclusionListSatisfied_run]
   simp [hunsatisfied]
 
@@ -348,9 +418,9 @@ private theorem shouldExtendPayload_run_eq_of_recorded_satisfied :
                       store pb).run s4 := by
   intro store runnerStore s1 root rootBlock currentSlot
     hblock hcur hnooverflow hslot hverified hlookup
-  rw [shouldExtendPayload_run]
-  simp [hblock, hcur, hnooverflow]
-  simp [hslot, hverified]
+  rw [shouldExtendPayload_run_eq_of_slot_prefix store runnerStore s1 root rootBlock
+    currentSlot hblock hcur hnooverflow hslot]
+  simp [hverified]
   rw [isPayloadInclusionListSatisfied_run]
   simp [hlookup, hverified]
 
