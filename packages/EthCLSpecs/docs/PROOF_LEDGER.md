@@ -30,9 +30,8 @@ alike. A theorem lands partly when it states one branch, one call pattern, or a
 restatement of a helper rather than the whole claim the row asks for. It then
 carries no `@[characterizes]` tag, and its Property cell carries the fixed
 shape `Landed: … Open: …`: what the landed theorem establishes, then the
-remainder a `characterizes` theorem would have to cover. `getPtc`,
-`shouldExtendPayload`, and `onExecutionPayloadEnvelope` are the cases
-that show it.
+remainder a `characterizes` theorem would have to cover. `getPtc` and
+`onExecutionPayloadEnvelope` are the cases that show it.
 
 `out of scope` carries its reason in the Property cell, cryptographic
 assumptions being the standing case.
@@ -72,7 +71,7 @@ author how to state it. `EthCLSpecs/Proofs/` splits per fork the same way.
 
 ## Dependencies between rows
 
-Three claims rest on another row:
+Four claims rest on another row:
 
 - The committee partition rests on the shuffle bijection.
 - Plausible liveness rests on accountable safety.
@@ -88,6 +87,16 @@ Three claims rest on another row:
   deposit branch is checked against: the deposit contract's incremental tree is
   not an `ofShape` tree, the case the SizzLean ledger's `branch × deposit-tree`
   row holds out of scope.
+- The Heze FOCIL handler postconditions rest on same-key insertion for `FcMap`.
+  [`EthCLLib/Proofs/LawfulFcMap.lean`](../../EthCLLib/EthCLLib/Proofs/LawfulFcMap.lean)
+  states those laws: lookup of an inserted key returns the inserted value, and
+  `contains` agrees with `Option.isSome` of lookup. `instLawfulFcMapTreeMap`
+  needs `[Std.TransOrd K]`. `instLawfulFcMapHashMap` needs `[EquivBEq K]` and
+  `[LawfulHashable K]`. `instTransOrdVectorUInt8` supplies transitivity for
+  `Root` (`Vector UInt8 32`) along the existing `instOrdVectorUInt8`
+  comparator, so both families synthesize at those keys. The theorems to cite
+  are `FcMap.lookup_insert_self` and `FcMap.contains_insert_self`. The
+  handler-postcondition theorems themselves remain later work.
 
 ---
 
@@ -263,13 +272,13 @@ Properties specific to the fork-choice store and the LMD-GHOST tree: agreement b
 
 | Function | Location | Property | Status | Tracking |
 | --- | --- | --- | --- | --- |
-| `shouldExtendPayload` | `Heze/ForkChoice.lean:320-342` | Landed: under successful preliminary lookup and slot checks, a verified payload with a recorded `false` inclusion-list satisfaction verdict is rejected by the FOCIL gate, with the pure runner state unchanged. Open: the later Gloas accept and reject paths, the missing-record `assert` branch, and the payload/verdict pairing tracked under `onExecutionPayloadEnvelope` | in progress | #63, `Proofs/Heze/ShouldExtendPayload.lean` |
+| `shouldExtendPayload` | `Heze/ForkChoice.lean:320-342` | The complete `.run` equation at `ForkChoiceStoreRun (Store map)`: block lookup, `getCurrentSlot`, the slot increment and assertion, `isPayloadVerified`, `isPayloadInclusionListSatisfied`, then the inherited Gloas tail. Named corollaries cover the prefix rejects, the FOCIL gate (unverified, missing record, recorded `false`, recorded `true`), the vote membership asserts, and the inherited Gloas accept and reject arms. Successful binds keep the intermediate runner states. A reject returns the error alone. Handler postconditions that expose the inserted payload and inclusion-list verdict, composition of those writes with this read-side equation, and the end-to-end corollary from successful envelope processing to the extension decision, are later work. That follow-up needs PRs [#84](https://github.com/etheorem/etheorem/pull/84) and [#92](https://github.com/etheorem/etheorem/pull/92). The characterization stands independently; those PRs are prerequisites for the later follow-up, not build dependencies of this proof | proved | `Proofs/Heze/ShouldExtendPayload.lean` |
 | `getInclusionListCommittee` | `Heze/ForkChoice.lean:204-212` | Complete `.run` equation at `ForkChoiceStoreRun σ`: empty concatenated indices throw the arithmetic error; a nonempty array returns `cyclicSample` of those indices and leaves the runner state unchanged | proved | follow-up to #82, `Proofs/Heze/GetInclusionListTransactions.lean` |
 | `getInclusionListTransactions` | `Heze/ForkChoice.lean:222-230` | Whole-operation `.run` equation at `ForkChoiceStoreRun (Store map)`: the committee run bound to collection at the committee's stored lists. Empty-committee and missing-timeliness errors follow as untagged corollaries | proved | follow-up to #82, `Proofs/Heze/GetInclusionListTransactions.lean` |
 | `collectInclusionListTransactions` | `Heze/ForkChoice.lean:135-152` | The collected set: an equivocator's entry contributes nothing; at `onlyTimely = true` an entry contributes exactly when its stored timeliness is `true`; at `onlyTimely = false` every non-equivocator entry contributes; the result is `arrayUnion` of the contributions, so it contains no duplicates. `getInclusionListTransactions_run_eq` fixes the arguments passed to the collector but leaves the returned array unconstrained | proposed |  |
 | `recordPayloadInclusionListSatisfaction` | `Heze/ForkChoice.lean:406-418` | Complete `.run` equation at `ForkChoiceStoreRun (Store map)`: slot-zero checked-sub arithmetic error; empty-committee and missing-timeliness collector errors; arbitrary collector-error propagation; successful collection recording `isInclusionListSatisfied payload ilTxs` at `root` and preserving the collector's runner state | proved | follow-up to #82, `Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`, `Proofs/Heze/GetInclusionListTransactions.lean` (successful-path origin #82) |
-| `onExecutionPayloadEnvelope` | `Heze/ForkChoice.lean:426-448` | Landed: `onExecutionPayloadEnvelope_run_eq_of_successful_checks`. Under a successful `blockStates` lookup, `isDataAvailable = true`, `verifyExecutionPayloadEnvelope state signedEnv = .ok warm`, a nonzero `state.slot`, and successful timely collection, the handler's `ForkChoiceStoreRun` result is the original store with `blockStates`, `payloads`, and `payloadInclusionListSatisfaction` inserted at the same `signedEnv.message.beaconBlockRoot`. The inserts may overwrite a prior entry. Open: lookup-after-insert and contains-after-insert, including a later `some false` and `isPayloadVerified` on the final store; composition with `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied`; and every rejection path. The function remains touched until those rejection paths and required lookup consequences are proved. The generic `FcMap` interface provides no insert/lookup or insert/contains law, and the `treeMap` lookup theorem requires a `TransCmp Root` instance that `Root` does not have | in progress | follow-up to #83, `Proofs/Heze/OnExecutionPayloadEnvelope.lean` |
-| `isPayloadInclusionListSatisfied` | `Heze/ForkChoice.lean:305` | EIP-7805 FOCIL: a payload is accepted only when it carries every transaction that a timely inclusion list requires | proposed |  |
+| `onExecutionPayloadEnvelope` | `Heze/ForkChoice.lean:426-448` | Landed: `onExecutionPayloadEnvelope_run_eq_of_successful_checks`. Under a successful `blockStates` lookup, `isDataAvailable = true`, `verifyExecutionPayloadEnvelope state signedEnv = .ok warm`, a nonzero `state.slot`, and successful timely collection, the handler's `ForkChoiceStoreRun` result is the original store with `blockStates`, `payloads`, and `payloadInclusionListSatisfaction` inserted at the same `signedEnv.message.beaconBlockRoot`. The inserts may overwrite a prior entry. Same-key `FcMap` insertion is available in `EthCLLib.Proofs.LawfulFcMap`, with `treeMap` and `hashMap` instances at `Root`. Open: lookup-after-insert and contains-after-insert, including a later `some false` and `isPayloadVerified` on the final store; composition with the read-side characterizations `isPayloadInclusionListSatisfied_run` and `shouldExtendPayload_run`; the end-to-end corollary from successful envelope processing to the extension decision; and every rejection path. The function remains touched until those rejection paths and required lookup consequences are proved | in progress | follow-up to #83, `Proofs/Heze/OnExecutionPayloadEnvelope.lean` |
+| `isPayloadInclusionListSatisfied` | `Heze/ForkChoice.lean:305` | The complete `.run` equation at `ForkChoiceStoreRun (Store map)`: a missing satisfaction key is the membership assert; a recorded value is returned only when the payload is verified, otherwise `false`. Corollaries name the missing-record reject, an unverified recorded value, a recorded `false`, and a recorded `true` with a verified payload. Success leaves `runnerStore` unchanged. Verdict production and payload/verdict pairing remain later handler work | proved | `Proofs/Heze/IsPayloadInclusionListSatisfied.lean` |
 | `processInclusionList` | `Heze/ForkChoice.lean:170` | At most one stored list per validator per committee, asserted in its docstring and not proved. A conflicting second list leaves the stored list untouched and records the sender as an equivocator for that committee. The handler then ignores later lists from that validator on entry | proposed |  |
 
 ---

@@ -855,25 +855,52 @@ separation.
   `EthCLSpecs.Proofs.Gloas`. It characterizes Gloas `processOperations` at
   `GloasRun`; handlers and later failure postconditions remain opaque.
 
-- **`Proofs/Heze/ShouldExtendPayload.lean`** places its theorem in
+- **`EthCLLib/Proofs/LawfulFcMap.lean`** places its public declarations in
+  `EthCLLib.Proofs`. It defines the key-indexed `LawfulFcMap map K` interface
+  and generic same-key insertion theorems, with concrete instances for
+  `treeMap` and `hashMap`. The FOCIL handler postconditions that use those
+  laws remain tracked by the `onExecutionPayloadEnvelope` entry in
+  `PROOF_LEDGER.md`.
+
+- **`Proofs/Heze/IsPayloadInclusionListSatisfied.lean`** places its theorems in
+  `EthCLSpecs.Proofs.Heze`. `isPayloadInclusionListSatisfied_run` is the
+  complete `.run` equation at `ForkChoiceStoreRun (Store map)` and carries
+  `@[characterizes]`. A missing satisfaction key is the membership assert. A
+  recorded value is returned only when the payload is verified, otherwise
+  `false`. The four corollaries name the missing-record reject, an unverified
+  recorded value, a recorded `false`, and a recorded `true` with a verified
+  payload. Success leaves `runnerStore` unchanged. Verdict production and
+  payload/verdict pairing remain later handler work, tracked by the
+  `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
+
+- **`Proofs/Heze/ShouldExtendPayload.lean`** places its theorems in
   `EthCLSpecs.Proofs.Heze` because `shouldExtendPayload` exists in both Gloas
-  and Heze. `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` proves
-  the FOCIL rejection case at `ForkChoiceStoreRun (Store map)`. If the initial
-  block lookup and slot checks succeed, Heze rejects a verified payload when
-  the queried root has a recorded `false` inclusion-list satisfaction result.
-  The runner state remains unchanged. The theorem does not cover the later
-  fork-choice checks inherited from Gloas or the case where no result has been
-  recorded. It assumes that the recorded result is present and does not prove
-  that it belongs to the matching payload. The successful path that records
+  and Heze. `shouldExtendPayload_run` is the complete `.run` equation at
+  `ForkChoiceStoreRun (Store map)` and carries `@[characterizes]`. The
+  right-hand side is the evaluation order: block lookup, `getCurrentSlot`,
+  the slot increment and assertion, `isPayloadVerified`,
+  `isPayloadInclusionListSatisfied`, then the inherited Gloas tail. Named
+  corollaries cover the prefix rejects, the FOCIL gate, the vote membership
+  asserts, and the inherited Gloas accept and reject arms. Successful binds
+  keep the intermediate runner states. A reject returns the error alone.
+  `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied` survives as a
+  corollary: if the initial block lookup and slot checks succeed, Heze
+  rejects a verified payload when the queried root has a recorded `false`
+  inclusion-list satisfaction result, and the runner state remains
+  unchanged. The bind lemmas it cites are the fork-neutral `run_throw`,
+  `except_bind_ok`, and `except_bind_error` in `Proofs/Run.lean`, plus
+  `ForkChoiceStoreRun.throwArithmetic_run` in `Proofs/StoreRun.lean`. They
+  are stated at an arbitrary state type, so they apply to
+  `ForkChoiceStoreRun`. The successful path that records
   the result of `isInclusionListSatisfied` is proved in
   `Proofs/Heze/RecordPayloadInclusionListSatisfaction.lean`. The successful
   handler path that writes `blockStates`, `payloads`, and
   `payloadInclusionListSatisfaction` at the same
   `signedEnv.message.beaconBlockRoot` is proved in
-  `Proofs/Heze/OnExecutionPayloadEnvelope.lean`. Looking up that recorded
-  result, including a later `false` used by
-  `shouldExtendPayload_run_eq_false_of_recorded_unsatisfied`, remains tracked
-  by the `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
+  `Proofs/Heze/OnExecutionPayloadEnvelope.lean`. Handler postconditions
+  that pair `payloads[root]` with the satisfaction entry, and composition of
+  those writes with this read, remain tracked by the
+  `onExecutionPayloadEnvelope` entry in `PROOF_LEDGER.md`.
 
 - **`Proofs/Heze/GetInclusionListTransactions.lean`** proves the collector
   run equations used by the recorder characterization.
